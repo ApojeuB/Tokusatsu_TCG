@@ -1,0 +1,14 @@
+[
+  {
+    "id": "ultraman_hayata_001",
+    "name": "Ultraman",
+    "type": "unit",
+    "cost": 4,
+    "tags": ["ULTRAMAN", "PRESSURE"],
+    "effect": "Pode atacar no turno em que entra se seu comandante for Ultraman.",
+    "series": "Ultraman",
+    "rarity": "rare",
+    "power": 4,
+    "defense": 3
+  }
+]

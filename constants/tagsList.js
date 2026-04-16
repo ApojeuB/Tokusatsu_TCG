@@ -1,0 +1,14 @@
+export const TAGS = [
+  'RIDER',
+  'SHOCKER',
+  'SENTAI',
+  'KAIJU',
+  'ULTRAMAN',
+  'GUARD',
+  'PRESSURE',
+  'ENGINE',
+  'GENERATOR',
+  'FINISHER',
+  'TRANSFORMATION',
+  'EQUIPMENT',
+];

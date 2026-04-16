@@ -1,0 +1,11 @@
+[
+  { "id": "RIDER", "name": "Rider", "color": "#44ff44", "description": "Sinergia com Ichigo" },
+  { "id": "SHOCKER", "name": "Shocker", "color": "#ff4444", "description": "Pode ser anexado como material" },
+  { "id": "SENTAI", "name": "Sentai", "color": "#44aaff", "description": "Bônus por formação de equipe" },
+  { "id": "KAIJU", "name": "Kaiju", "color": "#ffaa44", "description": "Crescimento por turno" },
+  { "id": "ULTRAMAN", "name": "Ultraman", "color": "#ff44ff", "description": "Poder alto, tempo limitado" },
+  { "id": "GUARD", "name": "Guard", "color": "#44ff44", "description": "Protege o comandante" },
+  { "id": "PRESSURE", "name": "Pressure", "color": "#ff4444", "description": "+1 de dano ao atacar" },
+  { "id": "ENGINE", "name": "Engine", "color": "#44aaff", "description": "Escala com o jogo" },
+  { "id": "GENERATOR", "name": "Generator", "color": "#ffaa44", "description": "Gera Impulso" }
+]

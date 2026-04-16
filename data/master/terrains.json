@@ -1,0 +1,14 @@
+[
+  {
+    "id": "terrain_hq_001",
+    "name": "Quartel General",
+    "type": "terrain",
+    "cost": 2,
+    "tags": ["ENGINE"],
+    "effect": "O primeiro item jogado a cada turno custa 1 a menos.",
+    "series": "Original",
+    "rarity": "rare",
+    "globalEffect": true,
+    "duration": "whileActive"
+  }
+]

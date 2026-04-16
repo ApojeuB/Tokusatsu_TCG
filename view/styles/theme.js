@@ -1,0 +1,16 @@
+export const theme = {
+  primary: '#ffd700',
+  secondary: '#ff4444',
+  tertiary: '#44ff44',
+  background: '#1a1a2e',
+  surface: '#2a2a3a',
+  surfaceAlt: '#202033',
+  surfaceBorder: '#49496b',
+  text: '#ffffff',
+  textDim: '#9aa0b3',
+  guard: '#44ff44',
+  pressure: '#ff4444',
+  engine: '#44aaff',
+  generator: '#ffaa44',
+  shadow: 'rgba(0,0,0,0.35)',
+};

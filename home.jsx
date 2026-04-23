@@ -1,1 +1,1 @@
-export { default } from './view/screens/MainMenuScreen';
+export { default } from "./app/home";

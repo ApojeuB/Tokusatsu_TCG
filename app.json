@@ -1,35 +1,19 @@
 {
   "expo": {
-    "name": "Tokusatsu TCG",
-    "slug": "tokusatsu-tcg",
+    "name": "Tokusatsu Chronicle",
+    "slug": "tokusatsu-chronicle",
     "version": "1.0.0",
-    "orientation": "landscape",
+    "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": [
       "**/*"
     ],
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#1a1a2e"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.tokusatsu.tcg"
-    },
-    "android": {
-      "package": "com.tokusatsu.tcg",
-      "adaptiveIcon": {
-        "backgroundColor": "#1a1a2e"
-      }
-    },
-    "web": {},
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-asset"
     ],
-    "extra": {
-      "eas": {
-        "projectId": "tokusatsu-tcg-local"
-      }
+    "experiments": {
+      "typedRoutes": false
     }
   }
 }

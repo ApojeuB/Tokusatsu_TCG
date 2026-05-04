@@ -73,7 +73,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(246, 217, 79, 0.6)",
     overflow: "hidden",
-    // Adicionando um leve brilho no texto da legenda também
     textShadowColor: "rgba(246, 217, 79, 0.8)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,

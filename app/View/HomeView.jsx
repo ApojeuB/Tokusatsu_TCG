@@ -1,83 +1,80 @@
-import { router } from "expo-router";
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
-import { NeonButton } from "../Components/NeonButton";
-import { ScreenShell } from "../Components/ScreenShell";
+import React from "react";
+import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
-const hero = require("../../assets/home-hero.png");
-
-export function HomeView() {
+export function NeonButton({ label, subtitle, onPress, glowColor = "#fff", icon }) {
   return (
-    <ScreenShell title="Tokusatsu Chronicle" subtitle="Gem Comp" padded={false}>
-      <ImageBackground 
-        source={hero} 
-        style={styles.background} 
-        resizeMode="cover"
-        accessibilityLabel="Herói do Tokusatsu Chronicle em destaque"
-      >
-        <View style={styles.overlay}>
-          
-          <View style={styles.actions}>
-            <Text style={styles.caption}>Escolha seu próximo passo</Text>
-            
-            <View style={styles.buttons}>
-              <NeonButton 
-                label="Jogar" 
-                subtitle="Entrar em uma partida temática" 
-                onPress={() => router.push("/play")} 
-              />
-              <NeonButton 
-                label="Configuração" 
-                subtitle="Ajustar áudio, tema e preferências" 
-                onPress={() => router.push("/settings")} 
-              />
-              <NeonButton 
-                label="Deckbuilder" 
-                subtitle="Montar, revisar e testar seu deck" 
-                onPress={() => router.push("/deckbuilder")} 
-              />
-            </View>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.touchable}>
+      <View style={[styles.glowWrapper, { shadowColor: glowColor, borderColor: glowColor }]}>
+        <LinearGradient
+          colors={["#2a2d34", "#141518", "#08090a"]}
+          style={styles.buttonContent}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        >
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons 
+              name={icon} 
+              size={32} 
+              color={glowColor} 
+              style={{ textShadowColor: glowColor, textShadowRadius: 12, textShadowOffset: { width: 0, height: 0 } }} 
+            />
           </View>
 
-        </View>
-      </ImageBackground>
-    </ScreenShell>
+          <View style={styles.textContainer}>
+            <Text style={[styles.label, { textShadowColor: glowColor }]}>{label}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          </View>
+        </LinearGradient>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.45)", 
-    justifyContent: "flex-end", 
-    paddingHorizontal: 18,
-    paddingBottom: 48, 
-  },
-  actions: {
+  touchable: {
     width: "100%",
   },
-  caption: {
-    color: "#d4dde7",
-    fontSize: 14,
-    marginBottom: 20,
-    textAlign: "center",
-    alignSelf: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(4, 8, 16, 0.8)",
-    borderWidth: 1,
-    borderColor: "rgba(246, 217, 79, 0.6)",
-    overflow: "hidden",
-    textShadowColor: "rgba(246, 217, 79, 0.8)",
+  glowWrapper: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    elevation: 10, 
+    backgroundColor: "#000",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10, 
+  },
+  iconContainer: {
+    marginRight: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 44,
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  label: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
-  buttons: {
-    gap: 16, 
+  subtitle: {
+    color: "#9ba4b5",
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: "500",
   }
 });

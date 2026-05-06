@@ -72,7 +72,7 @@ export function UserProvider({ children }) {
         );
 
         setUsers(nextUsers);
-        setCurrentUserId(null);
+        setCurrentUserId(parsed?.currentUserId ?? null);
       } catch {
         setUsers([DEFAULT_ADMIN_USER]);
         setCurrentUserId(null);
@@ -92,10 +92,11 @@ export function UserProvider({ children }) {
     AsyncStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        users: ensureAdminUser(users)
+        users: ensureAdminUser(users),
+        currentUserId
       })
     ).catch(() => {});
-  }, [hydrated, users]);
+  }, [hydrated, users, currentUserId]);
 
   const currentUser = useMemo(() => {
     return users.find((user) => user.id === currentUserId) ?? null;

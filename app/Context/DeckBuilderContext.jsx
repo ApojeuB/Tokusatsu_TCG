@@ -1,17 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createContext, useContext } from "react";
 import { DeckBuilderController } from "../Controllers/DeckBuilderController";
+import { DeckService } from "../Service/DeckService";
+import { DeckEntity, createEmptyDeckSections } from "../Entities/DeckEntity";
 
 const DeckBuilderContext = createContext(null);
-const STORAGE_KEY = "tokusatsu-chronicle.deckbuilder";
-
-function createEmptyDeck() {
-  return {
-    main: [],
-    field: [],
-    commander: []
-  };
-}
 
 function cloneDeck(deck) {
   return {
@@ -19,14 +12,6 @@ function cloneDeck(deck) {
     field: deck.field.map((entry) => ({ ...entry })),
     commander: deck.commander.map((entry) => ({ ...entry }))
   };
-}
-
-function getStorage() {
-  if (typeof globalThis === "undefined" || !globalThis.localStorage) {
-    return null;
-  }
-
-  return globalThis.localStorage;
 }
 
 function getSectionCount(sectionEntries) {
@@ -39,69 +24,64 @@ export function DeckBuilderProvider({ children }) {
     return new Map(catalog.map((card) => [card.id, card]));
   }, [catalog]);
 
-  const [currentDeck, setCurrentDeck] = useState(createEmptyDeck);
-  const [savedDeck, setSavedDeck] = useState(null);
+  const [decks, setDecks] = useState([]);
+  const [activeDeckId, setActiveDeckId] = useState(null);
   const [hydrated, setHydrated] = useState(false);
 
+  // Carregar decks do banco de dados
   useEffect(() => {
-    const storage = getStorage();
-
-    if (!storage) {
-      setHydrated(true);
-      return;
-    }
-
-    try {
-      const raw = storage.getItem(STORAGE_KEY);
-
-      if (raw) {
-        const parsed = JSON.parse(raw);
-
-        if (parsed.currentDeck) {
-          setCurrentDeck(cloneDeck(parsed.currentDeck));
+    async function load() {
+      try {
+        const stored = await DeckService.getAll();
+        
+        if (stored.length > 0) {
+          setDecks(stored);
+          setActiveDeckId(stored[0].id);
+        } else {
+          // Criar deck padrão se não houver nenhum
+          const defaultDeck = new DeckEntity({
+            id: `deck-${Date.now()}`,
+            ownerUserId: null,
+            name: "Deck Inicial",
+            deck: createEmptyDeckSections(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+          await DeckService.create(defaultDeck);
+          setDecks([defaultDeck]);
+          setActiveDeckId(defaultDeck.id);
         }
-
-        if (parsed.savedDeck) {
-          setSavedDeck(cloneDeck(parsed.savedDeck));
-        }
+      } catch (error) {
+        console.error("Erro ao carregar decks:", error);
+      } finally {
+        setHydrated(true);
       }
-    } catch {
-      setCurrentDeck(createEmptyDeck());
-      setSavedDeck(null);
-    } finally {
-      setHydrated(true);
     }
+
+    load();
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) {
-      return;
-    }
-
-    const storage = getStorage();
-
-    if (!storage) {
-      return;
-    }
-
-    storage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        currentDeck,
-        savedDeck
-      })
-    );
-  }, [currentDeck, hydrated, savedDeck]);
+  const currentDeck = useMemo(() => {
+    return decks.find((d) => d.id === activeDeckId) || null;
+  }, [decks, activeDeckId]);
 
   const totals = useMemo(() => {
+    if (!currentDeck) {
+      return { main: 0, field: 0, commander: 0 };
+    }
+
     return {
-      main: getSectionCount(currentDeck.main),
-      field: getSectionCount(currentDeck.field),
-      commander: getSectionCount(currentDeck.commander)
+      main: getSectionCount(currentDeck.deck.main),
+      field: getSectionCount(currentDeck.deck.field),
+      commander: getSectionCount(currentDeck.deck.commander)
     };
   }, [currentDeck]);
 
   const expandedSections = useMemo(() => {
+    if (!currentDeck) {
+      return { main: [], field: [], commander: [] };
+    }
+
     const expand = (sectionEntries) => {
       return sectionEntries.flatMap((entry) => {
         const card = cardMap.get(entry.cardId);
@@ -115,87 +95,184 @@ export function DeckBuilderProvider({ children }) {
     };
 
     return {
-      main: expand(currentDeck.main),
-      field: expand(currentDeck.field),
-      commander: expand(currentDeck.commander)
+      main: expand(currentDeck.deck.main),
+      field: expand(currentDeck.deck.field),
+      commander: expand(currentDeck.deck.commander)
     };
   }, [cardMap, currentDeck]);
 
   const addCardToSection = (section, cardId) => {
+    if (!currentDeck) return false;
+
     let added = false;
 
-    setCurrentDeck((current) => {
-      const nextDeck = cloneDeck(current);
-      const entries = nextDeck[section];
+    setDecks((prevDecks) => {
+      return prevDecks.map((deck) => {
+        if (deck.id !== activeDeckId) return deck;
 
-      if (!entries) {
-        return current;
-      }
+        const nextDeck = { ...deck, deck: cloneDeck(deck.deck) };
+        const entries = nextDeck.deck[section];
 
-      if (section === "main" && getSectionCount(entries) >= 60) {
-        return current;
-      }
+        if (!entries) return deck;
 
-      const existing = entries.find((entry) => entry.cardId === cardId);
+        if (section === "main" && getSectionCount(entries) >= 60) {
+          return deck;
+        }
 
-      if (existing) {
-        existing.quantity += 1;
-      } else {
-        entries.push({ cardId, quantity: 1 });
-      }
+        const existing = entries.find((entry) => entry.cardId === cardId);
 
-      added = true;
-      return nextDeck;
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          entries.push({ cardId, quantity: 1 });
+        }
+
+        nextDeck.updatedAt = new Date().toISOString();
+        added = true;
+        return nextDeck;
+      });
     });
+
+    // Persistir no banco de dados
+    if (added && currentDeck) {
+      const updated = decks.find((d) => d.id === activeDeckId);
+      if (updated) {
+        DeckService.update(activeDeckId, {
+          name: updated.name,
+          deck: updated.deck,
+          updatedAt: updated.updatedAt
+        }).catch(console.error);
+      }
+    }
 
     return added;
   };
 
   const removeCardFromSection = (section, cardId) => {
+    if (!currentDeck) return false;
+
     let removed = false;
 
-    setCurrentDeck((current) => {
-      const nextDeck = cloneDeck(current);
-      const entries = nextDeck[section];
+    setDecks((prevDecks) => {
+      return prevDecks.map((deck) => {
+        if (deck.id !== activeDeckId) return deck;
 
-      if (!entries) {
-        return current;
-      }
+        const nextDeck = { ...deck, deck: cloneDeck(deck.deck) };
+        const entries = nextDeck.deck[section];
 
-      const existing = entries.find((entry) => entry.cardId === cardId);
+        if (!entries) return deck;
 
-      if (!existing) {
-        return current;
-      }
+        const existing = entries.find((entry) => entry.cardId === cardId);
 
-      existing.quantity -= 1;
+        if (!existing) return deck;
 
-      if (existing.quantity <= 0) {
-        nextDeck[section] = entries.filter((entry) => entry.cardId !== cardId);
-      }
+        existing.quantity -= 1;
 
-      removed = true;
-      return nextDeck;
+        if (existing.quantity <= 0) {
+          nextDeck.deck[section] = entries.filter((entry) => entry.cardId !== cardId);
+        }
+
+        nextDeck.updatedAt = new Date().toISOString();
+        removed = true;
+        return nextDeck;
+      });
     });
+
+    // Persistir no banco de dados
+    if (removed && currentDeck) {
+      const updated = decks.find((d) => d.id === activeDeckId);
+      if (updated) {
+        DeckService.update(activeDeckId, {
+          name: updated.name,
+          deck: updated.deck,
+          updatedAt: updated.updatedAt
+        }).catch(console.error);
+      }
+    }
 
     return removed;
   };
 
   const resetDeck = () => {
-    setCurrentDeck(createEmptyDeck());
+    if (!currentDeck) return;
+
+    setDecks((prevDecks) => {
+      return prevDecks.map((deck) => {
+        if (deck.id !== activeDeckId) return deck;
+
+        return {
+          ...deck,
+          deck: createEmptyDeckSections(),
+          updatedAt: new Date().toISOString()
+        };
+      });
+    });
+
+    // Persistir no banco
+    DeckService.update(activeDeckId, {
+      name: currentDeck.name,
+      deck: createEmptyDeckSections(),
+      updatedAt: new Date().toISOString()
+    }).catch(console.error);
   };
 
-  const saveDeck = () => {
-    setSavedDeck(cloneDeck(currentDeck));
+  const createDeck = async (name) => {
+    try {
+      const newDeck = new DeckEntity({
+        id: `deck-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ownerUserId: null,
+        name,
+        deck: createEmptyDeckSections(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
+      await DeckService.create(newDeck);
+      setDecks((prev) => [...prev, newDeck]);
+      setActiveDeckId(newDeck.id);
+
+      return newDeck.id;
+    } catch (error) {
+      console.error("Erro ao criar deck:", error);
+      return null;
+    }
   };
 
-  const loadDeck = () => {
-    if (!savedDeck) {
+  const deleteDeck = async (deckId) => {
+    try {
+      await DeckService.delete(deckId);
+      setDecks((prev) => prev.filter((d) => d.id !== deckId));
+
+      // Se deletou o deck ativo, mudar para outro
+      if (activeDeckId === deckId && decks.length > 1) {
+        const remaining = decks.filter((d) => d.id !== deckId);
+        setActiveDeckId(remaining[0].id);
+      }
+    } catch (error) {
+      console.error("Erro ao deletar deck:", error);
+    }
+  };
+
+  const switchDeck = (deckId) => {
+    if (decks.some((d) => d.id === deckId)) {
+      setActiveDeckId(deckId);
+    }
+  };
+
+  const saveDeck = async () => {
+    if (!currentDeck) return false;
+
+    try {
+      await DeckService.update(activeDeckId, {
+        name: currentDeck.name,
+        deck: currentDeck.deck,
+        updatedAt: new Date().toISOString()
+      });
+      return true;
+    } catch (error) {
+      console.error("Erro ao salvar deck:", error);
       return false;
     }
-
-    setCurrentDeck(cloneDeck(savedDeck));
-    return true;
   };
 
   return (
@@ -203,15 +280,20 @@ export function DeckBuilderProvider({ children }) {
       value={{
         catalog,
         currentDeck,
+        decks,
+        activeDeckId,
         expandedSections,
         totals,
-        hasSavedDeck: Boolean(savedDeck),
+        hasSavedDeck: Boolean(currentDeck),
         isMainDeckReady: totals.main === 60,
+        hydrated,
         addCardToSection,
         removeCardFromSection,
         resetDeck,
-        saveDeck,
-        loadDeck
+        createDeck,
+        deleteDeck,
+        switchDeck,
+        saveDeck
       }}
     >
       {children}

@@ -51,7 +51,7 @@ function drawCards(deck, amount) {
 function drawForSide(state, side) {
   const deckKey = side === "player" ? "playerDeck" : "opponentDeck";
   const handKey = side === "player" ? "playerHand" : "opponentHand";
-  const actor = side === "player" ? "Voce" : "Oponente";
+  const actor = side === "player" ? "Você" : "Oponente";
   const deck = state[deckKey];
 
   if (!deck.length) {
@@ -88,7 +88,7 @@ function finalizeBattle(state) {
       status: "finished",
       winner: "player",
       phaseLabel: "Vitoria",
-      battleLog: addLog(state.battleLog, "Voce venceu a partida.")
+      battleLog: addLog(state.battleLog, "Você venceu a partida.")
     };
   }
 
@@ -152,7 +152,7 @@ function playCard(state, side, battleId) {
   const discardKey = side === "player" ? "playerDiscard" : "opponentDiscard";
   const lastCardKey = side === "player" ? "playerLastCard" : "opponentLastCard";
   const targetLifeKey = side === "player" ? "opponentLife" : "playerLife";
-  const actor = side === "player" ? "Voce" : "Oponente";
+  const actor = side === "player" ? "Você" : "Oponente";
   const hand = state[handKey];
   const cardIndex = hand.findIndex((card) => card.battleId === battleId);
 
@@ -238,7 +238,7 @@ function startPlayerTurn(state) {
     opponentEnergy: 0,
     battleLog: addLog(
       state.battleLog,
-      `Turno ${nextTurn}: voce recebeu ${Math.min(nextTurn, MAX_ENERGY)} de energia.`
+      `Turno ${nextTurn}: você recebeu ${Math.min(nextTurn, MAX_ENERGY)} de energia.`
     )
   };
 
@@ -257,7 +257,7 @@ export function endPlayerTurn(state) {
 
   let nextState = {
     ...state,
-    battleLog: addLog(state.battleLog, "Voce encerrou o turno.")
+    battleLog: addLog(state.battleLog, "Você encerrou o turno.")
   };
 
   nextState = runOpponentTurn(nextState);

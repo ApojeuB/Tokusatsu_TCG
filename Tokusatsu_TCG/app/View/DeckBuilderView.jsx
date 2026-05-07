@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { ScreenShell } from "../Components/ScreenShell";
@@ -13,7 +14,7 @@ const SORT_OPTIONS = [
 const SECTION_META = [
   { key: "main", label: "Main Deck", helper: "Deck principal para iniciar a partida.", accent: "#6ea8ff" },
   { key: "field", label: "Field Deck", helper: "Cartas extras para montagem futura.", accent: "#8f77ff" },
-  { key: "commander", label: "Comander Deck", helper: "Espaco reservado para lideres.", accent: "#f6d94f" }
+  { key: "commander", label: "Commander Deck", helper: "Espaço reservado para líderes.", accent: "#f6d94f" }
 ];
 
 function DropdownField({ label, value, options, open, onToggle, onSelect }) {
@@ -83,12 +84,10 @@ export function DeckBuilderView() {
     catalog,
     currentDeck,
     totals,
-    hasSavedDeck,
     isMainDeckReady,
     addCardToSection,
     removeCardFromSection,
     saveDeck,
-    loadDeck,
     resetDeck
   } = useDeckBuilder();
 
@@ -151,16 +150,11 @@ export function DeckBuilderView() {
 
   const handleSaveDeck = () => {
     saveDeck();
-    setFeedback("Deck salvo. Use Carregar deck para restaurar esta montagem.");
+    setFeedback("Deck salvo na biblioteca.");
   };
 
-  const handleLoadDeck = () => {
-    if (!loadDeck()) {
-      setFeedback("Nenhum deck salvo encontrado nesta sessao.");
-      return;
-    }
-
-    setFeedback("Deck carregado com sucesso.");
+  const handleOpenLibrary = () => {
+    router.push("/deckbuilder");
   };
 
   const handleResetDeck = () => {
@@ -199,7 +193,7 @@ export function DeckBuilderView() {
           />
 
           <DropdownField
-            label="Ordenacao"
+            label="Ordenação"
             value={SORT_OPTIONS.find((option) => option.value === sortKey)?.label ?? "Nome A-Z"}
             options={SORT_OPTIONS}
             open={openDropdown === "sort"}
@@ -215,8 +209,8 @@ export function DeckBuilderView() {
               <Text style={styles.headerActionText}>Salvar deck</Text>
             </Pressable>
 
-            <Pressable style={[styles.headerAction, !hasSavedDeck && styles.headerActionDisabled]} onPress={handleLoadDeck} disabled={!hasSavedDeck}>
-              <Text style={styles.headerActionText}>Carregar deck</Text>
+            <Pressable style={styles.headerAction} onPress={handleOpenLibrary}>
+              <Text style={styles.headerActionText}>Biblioteca</Text>
             </Pressable>
 
             <Pressable style={[styles.headerAction, styles.headerActionWarn]} onPress={handleResetDeck}>
@@ -235,7 +229,7 @@ export function DeckBuilderView() {
           </View>
 
           <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>Comander {totals.commander}</Text>
+            <Text style={styles.statusPillText}>Commander {totals.commander}</Text>
           </View>
 
           <View style={styles.feedbackPill}>
@@ -266,9 +260,9 @@ export function DeckBuilderView() {
             <View style={styles.deckPanelHeader}>
               <View>
                 <Text style={styles.panelTitle}>Area do Deck</Text>
-                <Text style={styles.panelSubtitle}>Clique numa secao para definir onde a carta entra.</Text>
+                <Text style={styles.panelSubtitle}>Clique numa seção para definir onde a carta entra.</Text>
               </View>
-              <Text style={styles.deckRequirement}>A partida so libera com 60 cartas no Main Deck.</Text>
+              <Text style={styles.deckRequirement}>A partida só libera com 60 cartas no Main Deck.</Text>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: panelHeight }} contentContainerStyle={styles.deckSections}>
@@ -305,7 +299,7 @@ export function DeckBuilderView() {
                       </View>
                     ) : (
                       <View style={styles.emptyDeckState}>
-                        <Text style={styles.emptyDeckText}>Nenhuma carta nesta secao ainda.</Text>
+                        <Text style={styles.emptyDeckText}>Nenhuma carta nesta seção ainda.</Text>
                       </View>
                     )}
                   </View>

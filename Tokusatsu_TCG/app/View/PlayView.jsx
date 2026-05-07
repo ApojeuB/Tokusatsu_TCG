@@ -1,10 +1,12 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ScreenShell } from "../Components/ScreenShell";
 import { createBattleState, endPlayerTurn, getCardImpact, playPlayerCard } from "../Controllers/PlayController";
 import { useAppSettings } from "../Context/AppSettingsContext";
 import { useDeckBuilder } from "../Context/DeckBuilderContext";
+
+const playmatBackground = require("../../assets/playmat-background.png");
 
 function StatPill({ label, value, accent = "#f6d94f" }) {
   return (
@@ -20,8 +22,115 @@ function LastActionCard({ title, card, accent }) {
     <View style={[styles.lastActionCard, { borderColor: accent }]}>
       <Text style={styles.sectionLabel}>{title}</Text>
       <Text style={styles.lastActionName}>{card ? card.name : "Nenhuma carta resolvida"}</Text>
-      <Text style={styles.lastActionMeta}>{card ? `Custo ${card.cost} | Impacto ${getCardImpact(card)}` : "A ultima acao aparecera aqui."}</Text>
+      <Text style={styles.lastActionMeta}>
+        {card ? `Custo ${card.cost} | Impacto ${getCardImpact(card)}` : "A última ação aparecerá aqui."}
+      </Text>
     </View>
+  );
+}
+
+function PlaymatSlot({ label, value, accent = "#f6d94f", filled = false, compact = false, diamond = false }) {
+  return (
+    <View
+      style={[
+        styles.playmatSlot,
+        compact && styles.playmatSlotCompact,
+        diamond && styles.playmatSlotDiamond,
+        { borderColor: accent },
+        filled && styles.playmatSlotFilled
+      ]}
+    >
+      <Text style={[styles.playmatSlotLabel, diamond && styles.playmatDiamondLabel]}>{label}</Text>
+      <Text numberOfLines={2} style={[styles.playmatSlotValue, compact && styles.playmatSlotValueCompact, diamond && styles.playmatDiamondLabel, { color: accent }]}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function HandStrip({ side, accent, handCount, inverted = false }) {
+  return (
+    <View style={[styles.handStrip, inverted && styles.handStripInverted]}>
+      {Array.from({ length: 5 }, (_, index) => (
+        <PlaymatSlot
+          key={`${side}-hand-${index}`}
+          label={index === 0 ? "Mão" : `Carta ${index + 1}`}
+          value={index === 0 ? handCount : "Oculta"}
+          accent={accent}
+          compact
+          filled={index < Math.min(handCount, 5)}
+        />
+      ))}
+    </View>
+  );
+}
+
+function Playmat({ battle }) {
+  const opponentFields = ["Rider", "Rider", "Suporte", "Suporte", "Recurso", "Recurso", "Recurso"];
+  const playerFields = ["Rider", "Rider", "Suporte", "Suporte", "Recurso", "Recurso", "Recurso"];
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ImageBackground source={playmatBackground} style={styles.playmat} imageStyle={styles.playmatBackground}>
+        <View style={styles.playmatOverlay} />
+
+        <View style={styles.playmatHeader}>
+          <Text style={styles.playmatTitle}>Playmat</Text>
+          <Text style={styles.playmatPhase}>{battle.status === "active" ? battle.phaseLabel : "Partida finalizada"}</Text>
+        </View>
+
+        <HandStrip side="opponent" accent="#ff61b8" handCount={battle.opponentHand.length} inverted />
+
+        <View style={styles.playmatBody}>
+          <View style={styles.playmatRail}>
+            <PlaymatSlot label="Deck Oponente" value={battle.opponentDeck.length} accent="#ff61b8" filled />
+            <PlaymatSlot label="Descarte" value={battle.opponentDiscard.length} accent="#ff61b8" filled={battle.opponentDiscard.length > 0} />
+            <PlaymatSlot label="Última" value={battle.opponentLastCard ? battle.opponentLastCard.name : "Nenhuma"} accent="#ff61b8" filled={Boolean(battle.opponentLastCard)} />
+          </View>
+
+          <View style={styles.playmatArena}>
+            <View style={styles.fieldCluster}>
+              <View style={styles.fieldRowWide}>
+                {opponentFields.slice(0, 3).map((label, index) => (
+                  <PlaymatSlot key={`opponent-front-${index}`} label={label} value="Livre" accent="#ff61b8" />
+                ))}
+              </View>
+              <View style={styles.fieldRowWide}>
+                {opponentFields.slice(3).map((label, index) => (
+                  <PlaymatSlot key={`opponent-back-${index}`} label={label} value="Livre" accent="#ff61b8" />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.centerBand}>
+              <PlaymatSlot label="Impulso" value="LSO" accent="#f6d94f" diamond filled />
+              <PlaymatSlot label="Confronto" value={`Turno ${battle.turnNumber}`} accent="#f6d94f" filled />
+            </View>
+
+            <View style={styles.fieldCluster}>
+              <View style={styles.fieldRowWide}>
+                {playerFields.slice(0, 4).map((label, index) => (
+                  <PlaymatSlot key={`player-front-${index}`} label={label} value="Livre" accent="#5cf2ff" />
+                ))}
+              </View>
+              <View style={styles.fieldRowWide}>
+                {playerFields.slice(4).map((label, index) => (
+                  <PlaymatSlot key={`player-back-${index}`} label={label} value="Livre" accent="#5cf2ff" />
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.playmatRail}>
+            <PlaymatSlot label="Deck Você" value={battle.playerDeck.length} accent="#5cf2ff" filled />
+            <PlaymatSlot label="Descarte" value={battle.playerDiscard.length} accent="#5cf2ff" filled={battle.playerDiscard.length > 0} />
+            <PlaymatSlot label="Última" value={battle.playerLastCard ? battle.playerLastCard.name : "Nenhuma"} accent="#5cf2ff" filled={Boolean(battle.playerLastCard)} />
+          </View>
+        </View>
+
+        <HandStrip side="player" accent="#5cf2ff" handCount={battle.playerHand.length} />
+      </ImageBackground>
+    </ScrollView>
   );
 }
 
@@ -64,18 +173,18 @@ export function PlayView() {
 
   if (!isMainDeckReady || !battle) {
     return (
-      <ScreenShell title="Jogar" subtitle="Duelo de prototipo" showBackButton>
+      <ScreenShell title="Jogar" subtitle="Duelo de protótipo" showBackButton>
         <View style={styles.lockedWrap}>
           <View style={styles.lockedCard}>
             <Text style={styles.lockedTitle}>Main Deck incompleto</Text>
             <Text style={styles.lockedText}>
-              A partida so inicia quando o Main Deck tiver exatamente 60 cartas. Monte o deck e volte para esta tela.
+              A partida só inicia quando o Main Deck tiver exatamente 60 cartas. Monte o deck e volte para esta tela.
             </Text>
 
             <View style={styles.lockedStats}>
               <StatPill label="Main Deck" value={`${totals.main}/60`} accent="#f6d94f" />
               <StatPill label="Field Deck" value={totals.field} accent="#8f77ff" />
-              <StatPill label="Comander" value={totals.commander} accent="#5cf2ff" />
+              <StatPill label="Commander" value={totals.commander} accent="#5cf2ff" />
             </View>
 
             <View style={styles.lockedActionRow}>
@@ -106,15 +215,15 @@ export function PlayView() {
   };
 
   const resultLabel = battle.winner === "player"
-    ? "Voce venceu"
+    ? "Você venceu"
     : battle.winner === "opponent"
-      ? "Voce perdeu"
+      ? "Você perdeu"
       : battle.winner === "draw"
         ? "Empate"
         : "Partida em andamento";
 
   return (
-    <ScreenShell title="Jogar" subtitle="Duelo de prototipo" showBackButton>
+    <ScreenShell title="Jogar" subtitle="Duelo de protótipo" showBackButton>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.board}>
           <View style={styles.enemyZone}>
@@ -124,21 +233,21 @@ export function PlayView() {
               <StatPill label="Vida" value={battle.opponentLife} accent="#ff8bd0" />
               <StatPill label="Energia" value={battle.opponentEnergy} accent="#f6d94f" />
               <StatPill label="Deck" value={battle.opponentDeck.length} accent="#d7e3f0" />
-              <StatPill label="Mao" value={battle.opponentHand.length} accent="#d7e3f0" />
+              <StatPill label="Mão" value={battle.opponentHand.length} accent="#d7e3f0" />
             </View>
 
-            <LastActionCard title="Ultima jogada inimiga" card={battle.opponentLastCard} accent="#ff61b8" />
+            <LastActionCard title="Última jogada inimiga" card={battle.opponentLastCard} accent="#ff61b8" />
           </View>
 
           <View style={styles.centerPanel}>
             <Text style={styles.energy}>Turno {battle.turnNumber}</Text>
             <Text style={styles.turn}>{battle.status === "active" ? battle.phaseLabel : resultLabel}</Text>
             <Text style={styles.helper}>
-              O duelo usa seu Main Deck real de 60 cartas. Enquanto nao houver sistema de tags, as cartas causam impacto direto.
+              O duelo usa seu Main Deck real de 60 cartas. Enquanto não houver sistema de tags, as cartas causam impacto direto.
             </Text>
 
             <View style={styles.audioRow}>
-              <Text style={styles.audioText}>Musica {musicVolume}%</Text>
+              <Text style={styles.audioText}>Música {musicVolume}%</Text>
               <Text style={styles.audioDot}>|</Text>
               <Text style={styles.audioText}>Efeitos {effectsVolume}%</Text>
             </View>
@@ -154,22 +263,24 @@ export function PlayView() {
             </View>
           </View>
 
+          <Playmat battle={battle} />
+
           <View style={styles.playerZone}>
-            <Text style={styles.zoneTitle}>Voce</Text>
+            <Text style={styles.zoneTitle}>Você</Text>
 
             <View style={styles.statRow}>
               <StatPill label="Vida" value={battle.playerLife} accent="#8ff8ff" />
               <StatPill label="Energia" value={battle.playerEnergy} accent="#f6d94f" />
               <StatPill label="Deck" value={battle.playerDeck.length} accent="#d7e3f0" />
-              <StatPill label="Mao" value={battle.playerHand.length} accent="#d7e3f0" />
+              <StatPill label="Mão" value={battle.playerHand.length} accent="#d7e3f0" />
             </View>
 
-            <LastActionCard title="Sua ultima jogada" card={battle.playerLastCard} accent="#5cf2ff" />
+            <LastActionCard title="Sua última jogada" card={battle.playerLastCard} accent="#5cf2ff" />
           </View>
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Sua mao</Text>
+          <Text style={styles.sectionTitle}>Sua mão</Text>
           <Text style={styles.sectionText}>
             Toque em uma carta para gastar energia e causar impacto direto no oponente.
           </Text>
@@ -187,22 +298,22 @@ export function PlayView() {
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>Sua mao esta vazia. Encerre o turno para comprar mais.</Text>
+              <Text style={styles.emptyStateText}>Sua mão está vazia. Encerre o turno para comprar mais.</Text>
             </View>
           )}
         </View>
 
         {tipsEnabled ? (
           <View style={styles.tipCard}>
-            <Text style={styles.sectionTitle}>Dica rapida</Text>
+            <Text style={styles.sectionTitle}>Dica rápida</Text>
             <Text style={styles.tipText}>
-              O bloqueio de inicio agora depende do Main Deck com 60 cartas. Field e Comander ficam livres para a montagem.
+              O bloqueio de início agora depende do Main Deck com 60 cartas. Field e Commander ficam livres para a montagem.
             </Text>
           </View>
         ) : null}
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Historico da batalha</Text>
+          <Text style={styles.sectionTitle}>Histórico da batalha</Text>
           <View style={styles.logList}>
             {battle.battleLog.map((entry, index) => (
               <View key={`${index}-${entry}`} style={styles.logItem}>
@@ -330,6 +441,131 @@ const styles = StyleSheet.create({
     color: "#c6d4e1",
     marginTop: 6,
     lineHeight: 20
+  },
+  playmat: {
+    width: 920,
+    minHeight: 640,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(246, 217, 79, 0.45)",
+    backgroundColor: "#02080e",
+    overflow: "hidden",
+    padding: 14,
+    gap: 12
+  },
+  playmatBackground: {
+    opacity: 0.92
+  },
+  playmatOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(1, 5, 10, 0.28)"
+  },
+  playmatHeader: {
+    position: "relative",
+    zIndex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12
+  },
+  playmatTitle: {
+    color: "#fff4b0",
+    fontSize: 18,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  playmatPhase: {
+    color: "#d7e3f0",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  handStrip: {
+    position: "relative",
+    zIndex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6
+  },
+  handStripInverted: {
+    opacity: 0.9
+  },
+  playmatBody: {
+    position: "relative",
+    zIndex: 1,
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "stretch"
+  },
+  playmatRail: {
+    width: 112,
+    gap: 12,
+    justifyContent: "space-between"
+  },
+  playmatArena: {
+    flex: 1,
+    gap: 18,
+    justifyContent: "center"
+  },
+  fieldCluster: {
+    gap: 10
+  },
+  fieldRowWide: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10
+  },
+  centerBand: {
+    minHeight: 88,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 18
+  },
+  playmatSlot: {
+    width: 102,
+    minHeight: 132,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    backgroundColor: "rgba(3, 8, 16, 0.6)",
+    padding: 10,
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 10
+  },
+  playmatSlotCompact: {
+    width: 78,
+    minHeight: 58,
+    padding: 8
+  },
+  playmatSlotDiamond: {
+    width: 78,
+    minHeight: 78,
+    borderRadius: 14,
+    transform: [{ rotate: "45deg" }],
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  playmatSlotFilled: {
+    borderStyle: "solid",
+    backgroundColor: "rgba(255,255,255,0.08)"
+  },
+  playmatSlotLabel: {
+    color: "#9fb0c1",
+    fontSize: 10,
+    textTransform: "uppercase"
+  },
+  playmatDiamondLabel: {
+    transform: [{ rotate: "-45deg" }],
+    textAlign: "center"
+  },
+  playmatSlotValue: {
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  playmatSlotValueCompact: {
+    fontSize: 12
   },
   energy: {
     color: "#fff4b0",

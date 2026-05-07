@@ -59,11 +59,11 @@ export function SettingsView() {
   } = useAppSettings();
 
   return (
-    <ScreenShell title="Configuracao" subtitle="Preferencias do jogo" showBackButton>
+    <ScreenShell title="Configuração" subtitle="Preferências do jogo" showBackButton>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.panel}>
           <VolumeRow
-            label="Musica"
+            label="Música"
             helper="Controle o volume da trilha da partida."
             value={musicVolume}
             onChange={setMusicVolume}
@@ -73,7 +73,7 @@ export function SettingsView() {
 
           <VolumeRow
             label="Efeitos"
-            helper="Controle o volume de cliques e acoes da mesa."
+            helper="Controle o volume de cliques e ações da mesa."
             value={effectsVolume}
             onChange={setEffectsVolume}
           />
@@ -91,7 +91,7 @@ export function SettingsView() {
 
           <View style={styles.summaryRow}>
             <View style={styles.summaryPill}>
-              <Text style={styles.summaryLabel}>Musica</Text>
+              <Text style={styles.summaryLabel}>Música</Text>
               <Text style={styles.summaryValue}>{musicVolume}%</Text>
             </View>
 

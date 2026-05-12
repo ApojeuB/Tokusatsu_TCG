@@ -10,6 +10,9 @@ const background = require("../../assets/card-back.png");
 export function ScreenShell({ title, subtitle, children, padded = true, showBackButton = false }) {
   const [menuVisible, setMenuVisible] = useState(false);
   const items = HomeController.getMenuItems();
+  const subtitleContent = typeof subtitle === "string"
+    ? <Text style={styles.subtitle}>{subtitle}</Text>
+    : subtitle;
 
   const handleBack = () => {
     if (typeof router.canGoBack === "function" && router.canGoBack()) {
@@ -37,7 +40,7 @@ export function ScreenShell({ title, subtitle, children, padded = true, showBack
 
           <View style={styles.heading}>
             <Text style={styles.title}>{title}</Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            {subtitle ? <View style={styles.subtitleWrap}>{subtitleContent}</View> : null}
           </View>
 
           <View style={styles.sideSlot}>
@@ -95,7 +98,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: "#c3cfdf",
-    fontSize: 12,
+    fontSize: 12
+  },
+  subtitleWrap: {
     marginTop: 2
   },
   iconButton: {

@@ -25,20 +25,46 @@ function addLog(logs, message) {
 }
 
 function buildFallbackDeck(size) {
-  const starterDeck = DeckBuilderController.getStarterDeck();
-  const catalog = DeckBuilderController.getCatalog();
+  const starterDeck = DeckBuilderController.getStarterDeck() ?? [];
+  const catalog = DeckBuilderController.getCatalog() ?? [];
   const source = starterDeck.length ? starterDeck : catalog;
+
+  if (!source.length) {
+    return [];
+  }
 
   return Array.from({ length: size }, (_, index) => source[index % source.length]);
 }
 
 function cloneDeck(cards, prefix) {
   return shuffle(
-    cards.map((card, index) => ({
+    cards.filter(Boolean).map((card, index) => ({
       ...card,
       battleId: `${prefix}-${card.id}-${index + 1}`
     }))
   );
+}
+
+function createUnavailableBattleState(message) {
+  return {
+    status: "unavailable",
+    winner: null,
+    turnNumber: 0,
+    phaseLabel: "Partida indisponivel",
+    playerLife: STARTING_LIFE,
+    opponentLife: STARTING_LIFE,
+    playerEnergy: 0,
+    opponentEnergy: 0,
+    playerDeck: [],
+    opponentDeck: [],
+    playerHand: [],
+    opponentHand: [],
+    playerDiscard: [],
+    opponentDiscard: [],
+    playerLastCard: null,
+    opponentLastCard: null,
+    battleLog: [message]
+  };
 }
 
 function drawCards(deck, amount) {
@@ -110,9 +136,15 @@ export function getCardImpact(card) {
 }
 
 export function createBattleState(playerDeckCards = []) {
-  const deckSize = playerDeckCards.length || DEFAULT_DECK_SIZE;
-  const playerDeckSource = playerDeckCards.length ? playerDeckCards : buildFallbackDeck(deckSize);
+  const safePlayerDeckCards = Array.isArray(playerDeckCards) ? playerDeckCards.filter(Boolean) : [];
+  const deckSize = safePlayerDeckCards.length || DEFAULT_DECK_SIZE;
+  const playerDeckSource = safePlayerDeckCards.length ? safePlayerDeckCards : buildFallbackDeck(deckSize);
   const opponentDeckSource = buildFallbackDeck(deckSize);
+
+  if (!playerDeckSource.length || !opponentDeckSource.length) {
+    return createUnavailableBattleState("Nao ha cartas disponiveis no catalogo para iniciar a partida.");
+  }
+
   const playerDeck = cloneDeck(playerDeckSource, "player");
   const opponentDeck = cloneDeck(opponentDeckSource, "opponent");
   const playerDraw = drawCards(playerDeck, STARTING_HAND);

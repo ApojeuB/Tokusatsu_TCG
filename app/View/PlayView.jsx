@@ -76,7 +76,7 @@ function Playmat({ battle }) {
 
         <View style={styles.playmatHeader}>
           <Text style={styles.playmatTitle}>Playmat</Text>
-          <Text style={styles.playmatPhase}>{battle.status === "active" ? battle.phaseLabel : "Partida finalizada"}</Text>
+          <Text style={styles.playmatPhase}>{battle.phaseLabel}</Text>
         </View>
 
         <HandStrip side="opponent" accent="#ff61b8" handCount={battle.opponentHand.length} inverted />
@@ -129,6 +129,120 @@ function Playmat({ battle }) {
         </View>
 
         <HandStrip side="player" accent="#5cf2ff" handCount={battle.playerHand.length} />
+      </ImageBackground>
+    </ScrollView>
+  );
+}
+
+function ZoneCard({ style, tone = "unit" }) {
+  return (
+    <View style={[styles.zoneCard, styles[`${tone}ZoneCard`], style]}>
+      <View style={styles.zoneCardShine} />
+    </View>
+  );
+}
+
+function LabelBar({ label, style, compact = false }) {
+  return (
+    <View style={[styles.labelBar, compact && styles.labelBarCompact, style]}>
+      <View style={styles.labelBarCapLeft} />
+      <Text style={[styles.labelBarText, compact && styles.labelBarTextCompact]}>{label}</Text>
+      <View style={styles.labelBarCapRight} />
+    </View>
+  );
+}
+
+function ImpulseMarker({ style }) {
+  return (
+    <View style={[styles.impulseMarker, style]}>
+      <View style={styles.impulseMarkerInner}>
+        <Text style={styles.impulseText}>IMPULSO</Text>
+      </View>
+    </View>
+  );
+}
+
+function DigitalHandStack({ cards, energy, status, onPlayCard }) {
+  return (
+    <View style={styles.digitalHandStack}>
+      {Array.from({ length: 5 }, (_, index) => (
+        <Pressable
+          key={`hand-${index}`}
+          disabled={!cards[index] || status !== "active" || cards[index].cost > energy}
+          onPress={() => cards[index] && onPlayCard(cards[index].battleId)}
+          style={({ hovered, pressed }) => [
+            styles.digitalHandCard,
+            { left: index * 60, transform: [{ rotate: `${(index - 2) * 3}deg` }, { translateY: Math.abs(index - 2) * 5 }] },
+            cards[index] && styles.digitalHandCardFilled,
+            cards[index] && cards[index].cost > energy && styles.digitalHandCardLocked,
+            hovered && cards[index] && styles.digitalHandCardHovered,
+            pressed && cards[index] && styles.digitalHandCardPressed
+          ]}
+        >
+          <View style={styles.digitalHandCardShine} />
+          {cards[index] ? (
+            <View style={styles.digitalHandCardContent}>
+              <Text numberOfLines={1} style={styles.digitalHandCardName}>{cards[index].name}</Text>
+              <Text style={styles.digitalHandCardCost}>{cards[index].cost}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      ))}
+      <LabelBar label="Mão" compact style={styles.digitalHandLabel} />
+    </View>
+  );
+}
+
+function DigitalPlaymat({ battle, onPlayCard }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.digitalPlaymatScroller}>
+      <ImageBackground source={playmatBackground} style={styles.digitalPlaymat} imageStyle={styles.digitalPlaymatBackground}>
+        <View style={styles.digitalPlaymatWash} />
+        <View style={styles.digitalPlaymatGridGlow} />
+
+        <View style={styles.digitalPlaymatHeader}>
+          <Text style={styles.digitalPlaymatTitle}>Tokusatsu Chronicle</Text>
+          <Text style={styles.digitalPlaymatPhase}>{battle.phaseLabel}</Text>
+        </View>
+
+        <ZoneCard tone="commander" style={styles.commanderZone} />
+        <LabelBar label="Comander" style={styles.commanderLabel} />
+
+        <ZoneCard tone="terrain" style={styles.terrainZone} />
+        <LabelBar label="Terreno" compact style={styles.terrainLabel} />
+
+        <ZoneCard tone="stack" style={styles.discardZone} />
+        <LabelBar label="Discard" compact style={styles.discardLabel} />
+
+        <ZoneCard tone="stack" style={styles.deckZone} />
+        <LabelBar label="Deck" compact style={styles.deckLabel} />
+
+        <ZoneCard tone="side" style={styles.leftSideZone} />
+        <ZoneCard tone="side" style={styles.rightUpperSideZone} />
+
+        <ImpulseMarker style={styles.leftImpulse} />
+        <ImpulseMarker style={styles.rightImpulse} />
+
+        <View style={styles.unitField}>
+          {Array.from({ length: 4 }, (_, index) => (
+            <ZoneCard key={`unit-${index}`} tone="unit" style={styles.mainZoneCard} />
+          ))}
+        </View>
+        <LabelBar label="Campos de unidade" style={styles.unitLabel} />
+
+        <View style={styles.actionField}>
+          {Array.from({ length: 3 }, (_, index) => (
+            <ZoneCard key={`action-${index}`} tone="action" style={styles.actionFieldZoneCard} />
+          ))}
+        </View>
+        <LabelBar label="Campos de Action e Re-Action" style={styles.actionLabel} />
+
+        <DigitalHandStack
+          cards={battle.playerHand}
+          energy={battle.playerEnergy}
+          status={battle.status}
+          onPlayCard={onPlayCard}
+        />
       </ImageBackground>
     </ScrollView>
   );
@@ -220,10 +334,10 @@ export function PlayView() {
       ? "Você perdeu"
       : battle.winner === "draw"
         ? "Empate"
-        : "Partida em andamento";
+        : battle.phaseLabel;
 
   return (
-    <ScreenShell title="Jogar" subtitle="Duelo de protótipo" showBackButton>
+    <ScreenShell title="Jogar" subtitle="Duelo de protótipo" showBackButton padded={false}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.board}>
           <View style={styles.enemyZone}>
@@ -263,7 +377,7 @@ export function PlayView() {
             </View>
           </View>
 
-          <Playmat battle={battle} />
+          <DigitalPlaymat battle={battle} onPlayCard={handlePlayCard} />
 
           <View style={styles.playerZone}>
             <Text style={styles.zoneTitle}>Você</Text>
@@ -329,8 +443,9 @@ export function PlayView() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingBottom: 24,
-    gap: 16
+    minHeight: 780,
+    paddingHorizontal: 0,
+    paddingBottom: 0
   },
   lockedWrap: {
     flex: 1,
@@ -366,36 +481,61 @@ const styles = StyleSheet.create({
     marginTop: 20
   },
   board: {
-    gap: 16
+    minHeight: 780,
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "#02050a"
   },
   enemyZone: {
-    borderRadius: 22,
+    position: "absolute",
+    zIndex: 20,
+    top: 14,
+    left: 18,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#ff61b8",
-    backgroundColor: "rgba(29, 7, 25, 0.68)",
-    padding: 16,
-    gap: 14
+    borderColor: "rgba(255, 139, 208, 0.32)",
+    backgroundColor: "rgba(14, 6, 18, 0.42)",
+    padding: 12,
+    gap: 8,
+    maxWidth: 360
   },
   playerZone: {
-    borderRadius: 22,
+    position: "absolute",
+    zIndex: 20,
+    left: 18,
+    bottom: 18,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#5cf2ff",
-    backgroundColor: "rgba(4, 15, 23, 0.74)",
-    padding: 16,
-    gap: 14
+    borderColor: "rgba(92, 242, 255, 0.34)",
+    backgroundColor: "rgba(4, 15, 23, 0.46)",
+    padding: 12,
+    gap: 8,
+    maxWidth: 360
   },
   centerPanel: {
-    borderRadius: 20,
+    position: "absolute",
+    zIndex: 22,
+    top: 16,
+    alignSelf: "center",
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#f6d94f",
-    backgroundColor: "rgba(7, 12, 21, 0.82)",
-    padding: 18,
-    alignItems: "center"
+    borderColor: "rgba(246, 217, 79, 0.52)",
+    backgroundColor: "rgba(8, 12, 18, 0.64)",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    shadowColor: "#f6d94f",
+    shadowOpacity: 0.22,
+    shadowRadius: 18
   },
   zoneTitle: {
     color: "#fff4b0",
     fontWeight: "800",
-    fontSize: 18
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: "uppercase"
   },
   statRow: {
     flexDirection: "row",
@@ -403,44 +543,45 @@ const styles = StyleSheet.create({
     gap: 10
   },
   statPill: {
-    minWidth: 72,
-    borderRadius: 16,
+    minWidth: 52,
+    borderRadius: 12,
     borderWidth: 1,
     backgroundColor: "rgba(255, 255, 255, 0.04)",
-    paddingVertical: 10,
-    paddingHorizontal: 12
+    paddingVertical: 7,
+    paddingHorizontal: 9
   },
   statLabel: {
     color: "#b5c0cd",
-    fontSize: 11,
+    fontSize: 9,
     textTransform: "uppercase"
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: "900",
-    marginTop: 4
+    marginTop: 2
   },
   lastActionCard: {
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    padding: 14
+    backgroundColor: "rgba(255, 255, 255, 0.035)",
+    padding: 8
   },
   sectionLabel: {
     color: "#c6d4e1",
-    fontSize: 11,
+    fontSize: 9,
     textTransform: "uppercase"
   },
   lastActionName: {
     color: "#ffffff",
-    fontSize: 18,
+    fontSize: 11,
     fontWeight: "800",
-    marginTop: 8
+    marginTop: 4
   },
   lastActionMeta: {
     color: "#c6d4e1",
-    marginTop: 6,
-    lineHeight: 20
+    marginTop: 2,
+    fontSize: 9,
+    lineHeight: 13
   },
   playmat: {
     width: 920,
@@ -567,29 +708,373 @@ const styles = StyleSheet.create({
   playmatSlotValueCompact: {
     fontSize: 12
   },
+  digitalPlaymat: {
+    width: 1220,
+    height: 760,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.28)",
+    backgroundColor: "#dce1e5",
+    overflow: "hidden",
+    shadowColor: "#b9c4ce",
+    shadowOpacity: 0.28,
+    shadowRadius: 34,
+    transform: [{ scale: 1 }]
+  },
+  digitalPlaymatScroller: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24
+  },
+  digitalPlaymatBackground: {
+    opacity: 0.12
+  },
+  digitalPlaymatWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(228, 233, 237, 0.88)"
+  },
+  digitalPlaymatGridGlow: {
+    position: "absolute",
+    left: 168,
+    top: 76,
+    width: 850,
+    height: 600,
+    borderRadius: 260,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    shadowColor: "#9fb5c8",
+    shadowOpacity: 0.28,
+    shadowRadius: 32
+  },
+  digitalPlaymatHeader: {
+    position: "absolute",
+    zIndex: 4,
+    left: 22,
+    right: 22,
+    top: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  digitalPlaymatTitle: {
+    color: "rgba(27, 38, 50, 0.78)",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1.8,
+    textTransform: "uppercase"
+  },
+  digitalPlaymatPhase: {
+    color: "rgba(43, 58, 72, 0.66)",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase"
+  },
+  zoneCard: {
+    position: "absolute",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.7)",
+    backgroundColor: "rgba(247, 250, 252, 0.42)",
+    overflow: "hidden",
+    shadowColor: "#8295a6",
+    shadowOpacity: 0.32,
+    shadowRadius: 13,
+    shadowOffset: { width: 0, height: 8 }
+  },
+  zoneCardShine: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(125, 164, 188, 0.24)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)"
+  },
+  unitZoneCard: {
+    backgroundColor: "rgba(249, 252, 254, 0.52)",
+    borderColor: "rgba(124, 150, 170, 0.42)"
+  },
+  actionZoneCard: {
+    backgroundColor: "rgba(241, 246, 249, 0.46)",
+    borderColor: "rgba(116, 138, 155, 0.38)"
+  },
+  handZoneCard: {
+    backgroundColor: "rgba(247, 250, 252, 0.58)",
+    borderColor: "rgba(103, 126, 146, 0.42)"
+  },
+  stackZoneCard: {
+    backgroundColor: "rgba(242, 247, 250, 0.5)",
+    borderColor: "rgba(91, 112, 132, 0.4)"
+  },
+  commanderZoneCard: {
+    backgroundColor: "rgba(245, 249, 252, 0.46)",
+    borderColor: "rgba(118, 141, 158, 0.34)"
+  },
+  terrainZoneCard: {
+    backgroundColor: "rgba(247, 250, 251, 0.48)",
+    borderColor: "rgba(96, 124, 144, 0.38)"
+  },
+  sideZoneCard: {
+    backgroundColor: "rgba(246, 250, 252, 0.44)",
+    borderColor: "rgba(104, 128, 148, 0.32)"
+  },
+  labelBar: {
+    position: "absolute",
+    zIndex: 6,
+    height: 34,
+    minWidth: 210,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.42)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.62)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#eff6fb",
+    shadowOpacity: 0.72,
+    shadowRadius: 18
+  },
+  labelBarCompact: {
+    height: 30,
+    minWidth: 128
+  },
+  labelBarCapLeft: {
+    position: "absolute",
+    left: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.36)",
+    transform: [{ rotate: "45deg" }]
+  },
+  labelBarCapRight: {
+    position: "absolute",
+    right: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.36)",
+    transform: [{ rotate: "45deg" }]
+  },
+  labelBarText: {
+    color: "rgba(42, 51, 60, 0.72)",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.2
+  },
+  labelBarTextCompact: {
+    fontSize: 13
+  },
+  unitField: {
+    position: "absolute",
+    zIndex: 3,
+    left: 336,
+    top: 150,
+    flexDirection: "row",
+    gap: 24
+  },
+  mainZoneCard: {
+    position: "relative",
+    width: 148,
+    height: 208
+  },
+  unitLabel: {
+    left: 356,
+    top: 236,
+    width: 670
+  },
+  actionField: {
+    position: "absolute",
+    zIndex: 3,
+    left: 426,
+    top: 400,
+    flexDirection: "row",
+    gap: 32
+  },
+  actionFieldZoneCard: {
+    position: "relative",
+    width: 148,
+    height: 208
+  },
+  actionLabel: {
+    left: 426,
+    top: 486,
+    width: 512
+  },
+  digitalHandStack: {
+    position: "absolute",
+    zIndex: 12,
+    left: 430,
+    bottom: 8,
+    width: 430,
+    height: 164
+  },
+  digitalHandCard: {
+    position: "absolute",
+    top: 0,
+    width: 104,
+    height: 148,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.72)",
+    backgroundColor: "rgba(12, 22, 32, 0.88)",
+    overflow: "hidden",
+    shadowColor: "#5cf2ff",
+    shadowOpacity: 0.2,
+    shadowRadius: 14
+  },
+  digitalHandCardFilled: {
+    borderColor: "rgba(92, 242, 255, 0.78)",
+    backgroundColor: "rgba(8, 22, 34, 0.94)"
+  },
+  digitalHandCardHovered: {
+    borderColor: "#fff4b0",
+    shadowColor: "#fff4b0",
+    shadowOpacity: 0.42,
+    shadowRadius: 20
+  },
+  digitalHandCardPressed: {
+    opacity: 0.82
+  },
+  digitalHandCardLocked: {
+    opacity: 0.52
+  },
+  digitalHandCardShine: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 255, 255, 0.05)"
+  },
+  digitalHandCardContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 10
+  },
+  digitalHandCardName: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  digitalHandCardCost: {
+    alignSelf: "flex-end",
+    color: "#fff4b0",
+    fontSize: 18,
+    fontWeight: "900"
+  },
+  digitalHandLabel: {
+    left: 36,
+    right: 36,
+    top: 74
+  },
+  commanderZone: {
+    left: 86,
+    top: 82,
+    width: 130,
+    height: 184
+  },
+  commanderLabel: {
+    left: 38,
+    top: 122,
+    width: 300
+  },
+  terrainZone: {
+    right: 84,
+    top: 70,
+    width: 146,
+    height: 202
+  },
+  terrainLabel: {
+    right: 52,
+    top: 152,
+    width: 220
+  },
+  discardZone: {
+    right: 88,
+    top: 320,
+    width: 150,
+    height: 210
+  },
+  discardLabel: {
+    right: 40,
+    top: 406,
+    width: 256
+  },
+  deckZone: {
+    right: 88,
+    bottom: 34,
+    width: 150,
+    height: 210
+  },
+  deckLabel: {
+    right: 40,
+    bottom: 120,
+    width: 256
+  },
+  leftSideZone: {
+    left: 72,
+    bottom: 42,
+    width: 150,
+    height: 210
+  },
+  rightUpperSideZone: {
+    right: 252,
+    top: 44,
+    width: 104,
+    height: 148,
+    opacity: 0.42,
+    transform: [{ rotate: "180deg" }]
+  },
+  impulseMarker: {
+    position: "absolute",
+    zIndex: 7,
+    width: 78,
+    height: 78,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.72)",
+    transform: [{ rotate: "45deg" }],
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#5cf2ff",
+    shadowOpacity: 0.78,
+    shadowRadius: 22
+  },
+  impulseMarkerInner: {
+    transform: [{ rotate: "-45deg" }],
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  impulseText: {
+    color: "rgba(43, 54, 66, 0.78)",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.4
+  },
+  leftImpulse: {
+    left: 246,
+    bottom: 92
+  },
+  rightImpulse: {
+    right: 314,
+    top: 88
+  },
   energy: {
     color: "#fff4b0",
     fontWeight: "900",
-    fontSize: 28
+    fontSize: 16,
+    letterSpacing: 1,
+    textTransform: "uppercase"
   },
   turn: {
     color: "#c4d2df",
-    marginTop: 6,
-    fontSize: 16,
+    marginTop: 2,
+    fontSize: 11,
     fontWeight: "700"
   },
   helper: {
-    color: "#9eb2c6",
-    marginTop: 10,
-    textAlign: "center",
-    fontSize: 12,
-    lineHeight: 18
+    display: "none"
   },
   audioRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 14
+    display: "none"
   },
   audioText: {
     color: "#d7e3f0",
@@ -600,9 +1085,11 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   actionRow: {
+    position: "absolute",
+    top: 52,
     flexDirection: "row",
     gap: 10,
-    marginTop: 16
+    marginTop: 0
   },
   primaryButton: {
     borderRadius: 16,
@@ -630,6 +1117,7 @@ const styles = StyleSheet.create({
     opacity: 0.45
   },
   sectionCard: {
+    display: "none",
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "rgba(246, 217, 79, 0.38)",
@@ -727,6 +1215,7 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   tipCard: {
+    display: "none",
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#5cf2ff",

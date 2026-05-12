@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { UserEntity } from "../Entities/UserEntity";
 
@@ -11,31 +12,33 @@ const DEFAULT_ADMIN_USER = new UserEntity({
   updatedAt: "2026-04-29T00:00:00.000Z"
 });
 
-function getStorage() {
-  if (typeof globalThis === "undefined" || !globalThis.localStorage) {
-    return null;
-  }
-
-  return globalThis.localStorage;
+function normalizeUsername(username) {
+  return typeof username === "string" ? username.trim().toLowerCase() : "";
 }
 
 function sanitizeUser(user) {
-  if (!user) {
+  if (!user || typeof user.username !== "string" || typeof user.password !== "string") {
+    return null;
+  }
+
+  const trimmedUsername = user.username.trim();
+
+  if (!trimmedUsername || !user.password) {
     return null;
   }
 
   return new UserEntity({
-    id: user.id,
-    username: user.username,
+    id: user.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    username: trimmedUsername,
     password: user.password,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
+    createdAt: user.createdAt || new Date().toISOString(),
+    updatedAt: user.updatedAt || new Date().toISOString()
   });
 }
 
 function ensureAdminUser(users) {
-  const normalizedUsers = users.map((user) => {
-    if (user.username.toLowerCase() !== "adm") {
+  const normalizedUsers = users.map(sanitizeUser).filter(Boolean).map((user) => {
+    if (normalizeUsername(user.username) !== "adm") {
       return user;
     }
 
@@ -48,7 +51,7 @@ function ensureAdminUser(users) {
     });
   });
 
-  const hasAdmin = normalizedUsers.some((user) => user.username.toLowerCase() === "adm");
+  const hasAdmin = normalizedUsers.some((user) => normalizeUsername(user.username) === "adm");
 
   if (hasAdmin) {
     return normalizedUsers;
@@ -58,23 +61,14 @@ function ensureAdminUser(users) {
 }
 
 export function UserProvider({ children }) {
-  const [users, setUsers] = useState([DEFAULT_ADMIN_USER]);
+  const [users, setUsers] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     async function hydrateSession() {
-      const storage = getStorage();
-
-      if (!storage) {
-        setUsers([DEFAULT_ADMIN_USER]);
-        setCurrentUserId(null);
-        setHydrated(true);
-        return;
-      }
-
       try {
-        const raw = storage.getItem(STORAGE_KEY);
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
 
         if (!raw) {
           setUsers([DEFAULT_ADMIN_USER]);
@@ -83,12 +77,13 @@ export function UserProvider({ children }) {
         }
 
         const parsed = JSON.parse(raw);
-        const nextUsers = ensureAdminUser(
-          Array.isArray(parsed?.users) ? parsed.users.map(sanitizeUser).filter(Boolean) : []
-        );
+        const nextUsers = ensureAdminUser(Array.isArray(parsed?.users) ? parsed.users : []);
+        const nextCurrentUserId = nextUsers.some((user) => user.id === parsed?.currentUserId)
+          ? parsed.currentUserId
+          : null;
 
         setUsers(nextUsers);
-        setCurrentUserId(null);
+        setCurrentUserId(nextCurrentUserId);
       } catch {
         setUsers([DEFAULT_ADMIN_USER]);
         setCurrentUserId(null);
@@ -105,23 +100,14 @@ export function UserProvider({ children }) {
       return;
     }
 
-    const storage = getStorage();
-
-    if (!storage) {
-      return;
-    }
-
-    try {
-      storage.setItem(
+    AsyncStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          users: ensureAdminUser(users)
+          users: ensureAdminUser(users),
+          currentUserId
         })
-      );
-    } catch {
-      // A conta admin continua disponivel em memoria mesmo se a persistencia falhar.
-    }
-  }, [hydrated, users]);
+    ).catch(() => {});
+  }, [hydrated, users, currentUserId]);
 
   const currentUser = useMemo(() => {
     return users.find((user) => user.id === currentUserId) ?? null;
@@ -134,8 +120,8 @@ export function UserProvider({ children }) {
       return { ok: false, message: "Preencha usuario e senha." };
     }
 
-    const normalizedUsername = trimmedUsername.toLowerCase();
-    const alreadyExists = users.some((user) => user.username.toLowerCase() === normalizedUsername);
+    const normalizedUsername = normalizeUsername(trimmedUsername);
+    const alreadyExists = users.some((user) => normalizeUsername(user.username) === normalizedUsername);
 
     if (alreadyExists) {
       return { ok: false, message: "Este usuario ja existe." };
@@ -157,9 +143,9 @@ export function UserProvider({ children }) {
   };
 
   const loginUser = (username, password) => {
-    const normalizedUsername = username?.trim()?.toLowerCase();
+    const normalizedUsername = normalizeUsername(username);
     const matchedUser = users.find(
-      (user) => user.username.toLowerCase() === normalizedUsername && user.password === password
+        (user) => normalizeUsername(user.username) === normalizedUsername && user.password === password
     );
 
     if (!matchedUser) {
@@ -175,19 +161,19 @@ export function UserProvider({ children }) {
   };
 
   return (
-    <UserContext.Provider
-      value={{
-        hydrated,
-        users,
-        currentUser,
-        isAuthenticated: Boolean(currentUser),
-        registerUser,
-        loginUser,
-        logoutUser
-      }}
-    >
-      {children}
-    </UserContext.Provider>
+      <UserContext.Provider
+          value={{
+            hydrated,
+            users,
+            currentUser,
+            isAuthenticated: Boolean(currentUser),
+            registerUser,
+            loginUser,
+            logoutUser
+          }}
+      >
+        {children}
+      </UserContext.Provider>
   );
 }
 

@@ -6,21 +6,19 @@ import { UserProvider } from "./Context/UserContext";
 
 export default function Layout() {
   return (
-    <UserProvider>
       <AppSettingsProvider>
         <DeckBuilderProvider>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="user" />
-            <Stack.Screen name="home" />
-            <Stack.Screen name="play" />
-            <Stack.Screen name="settings" />
-            <Stack.Screen name="deckbuilder" />
-            <Stack.Screen name="deckbuilder-editor/[deckId]" />
-          </Stack>
+          <UserProvider>
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="home" />
+              <Stack.Screen name="play" />
+              <Stack.Screen name="settings" />
+              <Stack.Screen name="deckbuilder" />
+            </Stack>
+          </UserProvider>
         </DeckBuilderProvider>
       </AppSettingsProvider>
-    </UserProvider>
   );
 }

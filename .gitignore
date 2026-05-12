@@ -1,5 +1,7 @@
 node_modules/
+.tools/
 .expo/
+.expo-export-check/
 dist/
 .vscode/
 build/

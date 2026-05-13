@@ -1,11 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ImageBackground, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { HomeController } from "../Controllers/HomeController";
 import { GameMenu } from "./GameMenu";
-
-const background = require("../../assets/card-back.png");
+import { ResponsiveBackground } from "./ResponsiveBackground";
 
 export function ScreenShell({ title, subtitle, children, padded = true, showBackButton = false }) {
   const [menuVisible, setMenuVisible] = useState(false);
@@ -24,8 +23,7 @@ export function ScreenShell({ title, subtitle, children, padded = true, showBack
   };
 
   return (
-    <ImageBackground source={background} style={styles.background} imageStyle={styles.backgroundImage}>
-      <View style={styles.overlay} />
+    <ResponsiveBackground>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <View style={styles.sideSlot}>
@@ -54,22 +52,11 @@ export function ScreenShell({ title, subtitle, children, padded = true, showBack
       </SafeAreaView>
 
       <GameMenu visible={menuVisible} onClose={() => setMenuVisible(false)} items={items} />
-    </ImageBackground>
+    </ResponsiveBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    backgroundColor: "#02050a"
-  },
-  backgroundImage: {
-    opacity: 0.34
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(1, 3, 9, 0.76)"
-  },
   safeArea: {
     flex: 1
   },

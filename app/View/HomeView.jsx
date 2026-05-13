@@ -1,15 +1,16 @@
 import { router } from "expo-router";
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { NeonButton } from "../Components/NeonButton";
 import { ScreenShell } from "../Components/ScreenShell";
+import { Logo } from "../Components/Logo";
 import { useUser } from "../Context/UserContext";
 
-const hero = require("../../assets/home-hero.png");
-
-
 export function HomeView() {
-
   const { currentUser, logoutUser } = useUser();
+  const { width } = useWindowDimensions();
+  
+  // Determina se é mobile ou desktop
+  const isMobile = width < 600;
 
   const handleLogout = () => {
     logoutUser();
@@ -17,72 +18,81 @@ export function HomeView() {
   };
 
   return (
-      <ScreenShell
-        title="Tokusatsu Chronicle"
-        subtitle={
-          <View style={styles.userRow}>
-            <Text style={styles.subtitleText}>
-              Gem Comp | Bem-Vindo:
-            </Text>
+    <ScreenShell
+      title="Tokusatsu Chronicle"
+      subtitle={
+        <View style={styles.userRow}>
+          <Text style={styles.subtitleText}>
+            Gem Comp | Bem-Vindo:
+          </Text>
 
-            <Text style={styles.username}>
-              {currentUser?.username ?? "Visitante"}
-            </Text>
-            <View style={styles.statusDot} />
-          </View>
-        }
-        padded={false}
-      >
-        <ImageBackground
-            source={hero}
-            style={styles.background}
-            resizeMode="cover"
-            accessibilityLabel="Herói do Tokusatsu Chronicle em destaque"
-        >
-          <View style={styles.overlay}>
+          <Text style={styles.username}>
+            {currentUser?.username ?? "Visitante"}
+          </Text>
+          <View style={styles.statusDot} />
+        </View>
+      }
+      padded={false}
+    >
+      <View style={styles.container}>
+        {/* Logo centralizada e responsiva */}
+        <View style={styles.logoContainer}>
+          <Logo 
+            maxWidth={isMobile ? "90%" : "70%"}
+            maxHeight={isMobile ? 150 : 200}
+          />
+        </View>
 
-            <View style={styles.actions}>
-              <Text style={styles.caption}>Escolha seu próximo passo</Text>
+        {/* Conteúdo das ações */}
+        <View style={styles.overlay}>
+          <View style={styles.actions}>
+            <Text style={styles.caption}>Escolha seu próximo passo</Text>
 
-              <View style={styles.buttons}>
-                <NeonButton
-                    label="Jogar"
-                    subtitle="Entrar em uma partida temática"
-                    onPress={() => router.push("/play")}
-                />
-                <NeonButton
-                    label="Configuração"
-                    subtitle="Ajustar áudio, tema e preferências"
-                    onPress={() => router.push("/settings")}
-                />
-                <NeonButton
-                    label="Deckbuilder"
-                    subtitle="Montar, revisar e testar seu deck"
-                    onPress={() => router.push("/deckbuilder")}
-                />
-                <NeonButton
-                    label="Sair"
-                    subtitle="Sair da conta atual"
-                    onPress={handleLogout}
-                />
-              </View>
+            <View style={styles.buttons}>
+              <NeonButton
+                label="Jogar"
+                subtitle="Entrar em uma partida temática"
+                onPress={() => router.push("/play")}
+              />
+              <NeonButton
+                label="Configuração"
+                subtitle="Ajustar áudio, tema e preferências"
+                onPress={() => router.push("/settings")}
+              />
+              <NeonButton
+                label="Deckbuilder"
+                subtitle="Montar, revisar e testar seu deck"
+                onPress={() => router.push("/deckbuilder")}
+              />
+              <NeonButton
+                label="Sair"
+                subtitle="Sair da conta atual"
+                onPress={handleLogout}
+              />
             </View>
-
           </View>
-        </ImageBackground>
-      </ScreenShell>
+        </View>
+      </View>
+    </ScreenShell>
   );
 }
 
-
 const styles = StyleSheet.create({
-  background: {
+  container: {
     flex: 1,
     width: "100%",
     height: "100%",
+    justifyContent: "space-between",
+    paddingVertical: 20
+  },
+  logoContainer: {
+    flex: 0.4,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 18
   },
   overlay: {
-    flex: 1,
+    flex: 0.6,
     backgroundColor: "rgba(0, 0, 0, 0.45)",
     justifyContent: "flex-end",
     paddingHorizontal: 18,
@@ -104,7 +114,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(246, 217, 79, 0.6)",
     overflow: "hidden",
-    // Adicionando um leve brilho no texto da legenda também
     textShadowColor: "rgba(246, 217, 79, 0.8)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
@@ -115,24 +124,20 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 4
   },
-
   subtitleText: {
     color: "#d4dde7"
   },
-
   userInfo: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6
   },
-
   statusDot: {
     width: 10,
     height: 10,
     borderRadius: 999,
-    backgroundColor: "#00ff88" // 🟢 verde online
+    backgroundColor: "#00ff88"
   },
-
   username: {
     color: "#00ff88",
     fontWeight: "bold"

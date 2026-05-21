@@ -1,59 +1,15 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { DeckBuilderController } from "../Controllers/DeckBuilderController";
-import { DeckEntity, cloneDeckSections, createDeckEntity } from "../Entities/DeckEntity";
+import { initDatabase } from "../DataBase";
+import { DeckEntity, cloneDeckSections, createDeckEntity, createEmptyDeckSections } from "../Entities/DeckEntity";
+import { DeckRepository } from "../Repositories/DeckRepository";
+import { ensureDefaultDeck, importLegacyPersistence } from "../Repositories/LegacyStorageImporter";
 
 const DeckBuilderContext = createContext(null);
-const STORAGE_KEY = "tokusatsu-chronicle.deckbuilder";
-const LEGACY_STORAGE_KEY = "tokusatsu-chronicle.deckbuilder.legacy";
 const DEFAULT_DECK_NAME = "Deck inicial";
-
-function createEmptyDeck() {
-  return {
-    main: [],
-    field: [],
-    commander: []
-  };
-}
 
 function getSectionCount(sectionEntries = []) {
   return sectionEntries.reduce((total, entry) => total + entry.quantity, 0);
-}
-
-function sanitizeDeckEntity(deck, fallbackIndex = 0) {
-  if (!deck) {
-    return null;
-  }
-
-  const timestamp = new Date().toISOString();
-
-  return new DeckEntity({
-    id: deck.id || `${Date.now()}-${fallbackIndex}`,
-    ownerUserId: deck.ownerUserId ?? null,
-    name: deck.name?.trim() || `${DEFAULT_DECK_NAME} ${fallbackIndex + 1}`,
-    createdAt: deck.createdAt || timestamp,
-    updatedAt: deck.updatedAt || timestamp,
-    deck: cloneDeckSections(deck.deck)
-  });
-}
-
-function createStarterDeckFromLegacy(parsed) {
-  const legacyDeck = parsed?.currentDeck || parsed?.savedDeck;
-
-  if (!legacyDeck) {
-    return null;
-  }
-
-  const timestamp = new Date().toISOString();
-
-  return new DeckEntity({
-    id: "starter-deck",
-    ownerUserId: null,
-    name: DEFAULT_DECK_NAME,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    deck: cloneDeckSections(legacyDeck)
-  });
 }
 
 function createDefaultDeck() {
@@ -63,17 +19,11 @@ function createDefaultDeck() {
   });
 }
 
-function updateDeckById(decks, deckId, updater) {
-  return decks.map((deck) => {
-    if (deck.id !== deckId) {
-      return deck;
-    }
-
-    const updatedDeck = updater(deck);
-    return new DeckEntity({
-      ...updatedDeck,
-      updatedAt: new Date().toISOString()
-    });
+function withUpdatedAt(deck, nextDeckSections = deck.deck) {
+  return new DeckEntity({
+    ...deck,
+    updatedAt: new Date().toISOString(),
+    deck: cloneDeckSections(nextDeckSections)
   });
 }
 
@@ -85,47 +35,39 @@ export function DeckBuilderProvider({ children }) {
   const [activeDeckId, setActiveDeckId] = useState(null);
   const [hydrated, setHydrated] = useState(false);
 
+  const reloadDecks = async () => {
+    const storedDecks = await ensureDefaultDeck();
+    const storedActiveDeckId = await DeckRepository.getActiveDeckId();
+    const nextActiveDeckId = storedDecks.some((deck) => deck.id === storedActiveDeckId)
+      ? storedActiveDeckId
+      : storedDecks[0]?.id ?? null;
+
+    if (nextActiveDeckId && nextActiveDeckId !== storedActiveDeckId) {
+      await DeckRepository.setActiveDeckId(nextActiveDeckId);
+    }
+
+    setDecks(storedDecks);
+    setActiveDeckId(nextActiveDeckId);
+    return { decks: storedDecks, activeDeckId: nextActiveDeckId };
+  };
+
   useEffect(() => {
     let cancelled = false;
 
     async function hydrateDecks() {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        const parsed = raw ? JSON.parse(raw) : null;
-        const storedDecks = Array.isArray(parsed?.decks)
-          ? parsed.decks.map(sanitizeDeckEntity).filter(Boolean)
-          : [];
-
-        if (storedDecks.length) {
-          if (cancelled) {
-            return;
-          }
-
-          setDecks(storedDecks);
-          setActiveDeckId(
-            storedDecks.some((deck) => deck.id === parsed.activeDeckId)
-              ? parsed.activeDeckId
-              : storedDecks[0].id
-          );
-          return;
-        }
-
-        const legacyRaw = await AsyncStorage.getItem(LEGACY_STORAGE_KEY) || raw;
-        const legacyDeck = legacyRaw ? createStarterDeckFromLegacy(JSON.parse(legacyRaw)) : null;
-        const defaultDeck = legacyDeck || createDefaultDeck();
-
-        if (cancelled) {
-          return;
-        }
-
-        setDecks([defaultDeck]);
-        setActiveDeckId(defaultDeck.id);
-      } catch {
-        const defaultDeck = createDefaultDeck();
+        await initDatabase();
+        await importLegacyPersistence();
 
         if (!cancelled) {
-          setDecks([defaultDeck]);
-          setActiveDeckId(defaultDeck.id);
+          await reloadDecks();
+        }
+      } catch {
+        const fallbackDeck = createDefaultDeck();
+
+        if (!cancelled) {
+          setDecks([fallbackDeck]);
+          setActiveDeckId(fallbackDeck.id);
         }
       } finally {
         if (!cancelled) {
@@ -141,27 +83,11 @@ export function DeckBuilderProvider({ children }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) {
-      return;
-    }
-
-    AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        activeDeckId,
-        decks
-      })
-    ).catch(() => {
-      // O deck ativo permanece em memoria mesmo se o sistema bloquear storage.
-    });
-  }, [activeDeckId, decks, hydrated]);
-
   const activeDeck = useMemo(() => {
     return decks.find((deck) => deck.id === activeDeckId) ?? decks[0] ?? null;
   }, [activeDeckId, decks]);
 
-  const currentDeck = activeDeck?.deck ?? createEmptyDeck();
+  const currentDeck = activeDeck?.deck ?? createEmptyDeckSections();
 
   const totals = useMemo(() => {
     return {
@@ -191,7 +117,11 @@ export function DeckBuilderProvider({ children }) {
     };
   }, [cardMap, currentDeck]);
 
-  const createDeck = (name) => {
+  const replaceDeckInState = (deck) => {
+    setDecks((current) => current.map((item) => (item.id === deck.id ? deck : item)));
+  };
+
+  const createDeck = async (name) => {
     const trimmedName = name?.trim();
 
     if (!trimmedName) {
@@ -203,73 +133,79 @@ export function DeckBuilderProvider({ children }) {
       name: trimmedName
     });
 
-    setDecks((current) => [...current, nextDeck]);
+    await DeckRepository.createDeck(nextDeck);
+    await DeckRepository.setActiveDeckId(nextDeck.id);
+    setDecks((current) => [nextDeck, ...current]);
     setActiveDeckId(nextDeck.id);
     return nextDeck.id;
   };
 
-  const openDeck = (deckId) => {
-    const deckExists = decks.some((deck) => deck.id === deckId);
+  const openDeck = async (deckId) => {
+    const deckExists = decks.some((deck) => deck.id === deckId) || Boolean(await DeckRepository.getDeckById(deckId));
 
     if (!deckExists) {
       return false;
     }
 
+    await DeckRepository.setActiveDeckId(deckId);
     setActiveDeckId(deckId);
     return true;
   };
 
-  const deleteDeck = (deckId) => {
-    setDecks((current) => {
-      const nextDecks = current.filter((deck) => deck.id !== deckId);
+  const deleteDeck = async (deckId) => {
+    await DeckRepository.deleteDeck(deckId);
+    const nextDecks = decks.filter((deck) => deck.id !== deckId);
 
-      if (!nextDecks.length) {
-        const defaultDeck = createDefaultDeck();
-        setActiveDeckId(defaultDeck.id);
-        return [defaultDeck];
-      }
+    if (!nextDecks.length) {
+      const defaultDeck = createDefaultDeck();
+      await DeckRepository.createDeck(defaultDeck);
+      await DeckRepository.setActiveDeckId(defaultDeck.id);
+      setDecks([defaultDeck]);
+      setActiveDeckId(defaultDeck.id);
+      return true;
+    }
 
-      if (activeDeckId === deckId) {
-        setActiveDeckId(nextDecks[0].id);
-      }
+    if (activeDeckId === deckId) {
+      await DeckRepository.setActiveDeckId(nextDecks[0].id);
+      setActiveDeckId(nextDecks[0].id);
+    }
 
-      return nextDecks;
-    });
+    setDecks(nextDecks);
+    return true;
   };
 
-  const renameDeck = (deckId, name) => {
+  const renameDeck = async (deckId, name) => {
     const trimmedName = name?.trim();
 
     if (!trimmedName) {
       return false;
     }
 
-    setDecks((current) =>
-      updateDeckById(current, deckId, (deck) => ({
-        ...deck,
-        name: trimmedName
-      }))
-    );
+    const deck = decks.find((item) => item.id === deckId) ?? await DeckRepository.getDeckById(deckId);
 
+    if (!deck) {
+      return false;
+    }
+
+    const updatedDeck = withUpdatedAt(new DeckEntity({ ...deck, name: trimmedName }));
+    await DeckRepository.saveDeck(updatedDeck);
+    replaceDeckInState(updatedDeck);
     return true;
   };
 
-  const updateActiveDeckSections = (updater) => {
+  const updateActiveDeckSections = async (updater) => {
     if (!activeDeck) {
       return false;
     }
 
-    setDecks((current) =>
-      updateDeckById(current, activeDeck.id, (deck) => ({
-        ...deck,
-        deck: updater(cloneDeckSections(deck.deck))
-      }))
-    );
-
+    const nextSections = updater(cloneDeckSections(activeDeck.deck));
+    const updatedDeck = withUpdatedAt(activeDeck, nextSections);
+    await DeckRepository.saveDeck(updatedDeck);
+    replaceDeckInState(updatedDeck);
     return true;
   };
 
-  const addCardToSection = (section, cardId) => {
+  const addCardToSection = async (section, cardId) => {
     const entries = currentDeck[section];
 
     if (!entries) {
@@ -280,7 +216,7 @@ export function DeckBuilderProvider({ children }) {
       return false;
     }
 
-    const updated = updateActiveDeckSections((deck) => {
+    return updateActiveDeckSections((deck) => {
       const nextEntries = deck[section];
       const nextExisting = nextEntries.find((entry) => entry.cardId === cardId);
 
@@ -292,22 +228,16 @@ export function DeckBuilderProvider({ children }) {
 
       return deck;
     });
-
-    return updated;
   };
 
-  const removeCardFromSection = (section, cardId) => {
+  const removeCardFromSection = async (section, cardId) => {
     const entries = currentDeck[section];
 
-    if (!entries) {
+    if (!entries || !entries.some((entry) => entry.cardId === cardId)) {
       return false;
     }
 
-    if (!entries.some((entry) => entry.cardId === cardId)) {
-      return false;
-    }
-
-    const updated = updateActiveDeckSections((deck) => {
+    return updateActiveDeckSections((deck) => {
       const nextEntries = deck[section];
       const existing = nextEntries.find((entry) => entry.cardId === cardId);
 
@@ -323,16 +253,25 @@ export function DeckBuilderProvider({ children }) {
 
       return deck;
     });
-
-    return updated;
   };
 
-  const resetDeck = () => {
-    return updateActiveDeckSections(() => createEmptyDeck());
+  const resetDeck = async () => {
+    return updateActiveDeckSections(() => createEmptyDeckSections());
   };
 
-  const saveDeck = () => Boolean(activeDeck);
-  const loadDeck = () => Boolean(activeDeck);
+  const saveDeck = async () => {
+    if (!activeDeck) {
+      return false;
+    }
+
+    await DeckRepository.saveDeck(activeDeck);
+    return true;
+  };
+
+  const loadDeck = async () => {
+    await reloadDecks();
+    return true;
+  };
 
   return (
     <DeckBuilderContext.Provider

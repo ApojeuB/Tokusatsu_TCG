@@ -133,33 +133,33 @@ export function DeckBuilderView() {
 
   const currentSectionLabel = SECTION_META.find((section) => section.key === activeSection)?.label ?? "Main Deck";
 
-  const handleAddCard = (cardId) => {
+  const handleAddCard = async (cardId) => {
     if (activeSection === "main" && totals.main >= 60) {
       setFeedback("O Main Deck ja atingiu 60 cartas.");
       return;
     }
 
-    addCardToSection(activeSection, cardId);
-    setFeedback(`Carta adicionada em ${currentSectionLabel}.`);
+    const added = await addCardToSection(activeSection, cardId);
+    setFeedback(added ? `Carta adicionada em ${currentSectionLabel}.` : "Nao foi possivel adicionar a carta.");
   };
 
-  const handleRemoveCard = (sectionKey, cardId) => {
-    removeCardFromSection(sectionKey, cardId);
-    setFeedback("Carta removida do deck.");
+  const handleRemoveCard = async (sectionKey, cardId) => {
+    const removed = await removeCardFromSection(sectionKey, cardId);
+    setFeedback(removed ? "Carta removida do deck." : "Nao foi possivel remover a carta.");
   };
 
-  const handleSaveDeck = () => {
-    saveDeck();
-    setFeedback("Deck salvo na biblioteca.");
+  const handleSaveDeck = async () => {
+    const saved = await saveDeck();
+    setFeedback(saved ? "Deck salvo na biblioteca." : "Nao foi possivel salvar o deck.");
   };
 
   const handleOpenLibrary = () => {
     router.push("/deckbuilder");
   };
 
-  const handleResetDeck = () => {
-    resetDeck();
-    setFeedback("Deck resetado.");
+  const handleResetDeck = async () => {
+    const reset = await resetDeck();
+    setFeedback(reset ? "Deck resetado." : "Nao foi possivel resetar o deck.");
   };
 
   return (

@@ -2,30 +2,73 @@ export class CardEntity {
   constructor({
     id,
     name,
-    series,
+    series = "Tokusatsu Chronicle",
+    cardType,
     type,
+    subTypes,
     subtype,
-    cost,
+    classRequirement = null,
+    talentRequirement = null,
+    cost = 0,
+    pitchValue = 0,
+    color = null,
+    attack,
     power,
-    defense,
+    defense = 0,
+    health = null,
+    text,
     effect,
-    rarity,
+    keywords = [],
+    effects = [],
+    comboCondition = null,
+    fusionCondition = null,
+    goAgain = false,
+    dominate = false,
+    intimidate = false,
+    artwork,
     image,
-    rules,
-    flavorText
+    rarity = "Common",
+    legality = {},
+    rules = [],
+    flavorText = ""
   }) {
     this.id = id;
     this.name = name;
     this.series = series;
-    this.type = type;
-    this.subtype = subtype;
+    this.cardType = cardType ?? type ?? "Action";
+    this.type = this.cardType;
+    this.subTypes = subTypes ?? (subtype ? [subtype] : []);
+    this.subtype = this.subTypes[0] ?? null;
+    this.classRequirement = classRequirement;
+    this.talentRequirement = talentRequirement;
     this.cost = cost;
-    this.power = power;
+    this.pitchValue = pitchValue;
+    this.color = color;
+    this.attack = attack ?? power ?? 0;
+    this.power = this.attack;
     this.defense = defense;
-    this.effect = effect;
+    this.health = health;
+    this.text = text ?? effect ?? "";
+    this.effect = this.text;
+    this.keywords = keywords;
+    this.effects = effects;
+    this.comboCondition = comboCondition;
+    this.fusionCondition = fusionCondition;
+    this.goAgain = goAgain;
+    this.dominate = dominate;
+    this.intimidate = intimidate;
+    this.artwork = artwork ?? image ?? null;
+    this.image = this.artwork;
     this.rarity = rarity;
-    this.image = image;
+    this.legality = legality;
     this.rules = rules;
     this.flavorText = flavorText;
+  }
+
+  hasKeyword(keywordName) {
+    return this.keywords.some((keyword) => {
+      const name = typeof keyword === "string" ? keyword : keyword?.name;
+      return name?.toLowerCase() === keywordName.toLowerCase();
+    });
   }
 }

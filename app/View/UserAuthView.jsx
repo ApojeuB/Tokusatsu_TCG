@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Logo } from "../Components/Logo";
+import { ResponsiveBackground } from "../Components/ResponsiveBackground";
 import { useUser } from "../Context/UserContext";
 
 function ModeButton({ active, label, onPress }) {
@@ -18,8 +20,10 @@ export function UserAuthView() {
   const [password, setPassword] = useState("");
   const [feedback, setFeedback] = useState("Entre com sua conta ou crie um novo usuario para continuar.");
 
-  const handleSubmit = () => {
-    const result = mode === "register" ? registerUser(username, password) : loginUser(username, password);
+  const handleSubmit = async () => {
+    const result = mode === "register"
+      ? await registerUser(username, password)
+      : await loginUser(username, password);
 
     if (!result.ok) {
       setFeedback(result.message);
@@ -31,65 +35,74 @@ export function UserAuthView() {
   };
 
   return (
-    <View style={styles.page}>
-      <View style={styles.heroCard}>
-        <Text style={styles.eyebrow}>Tokusatsu Chronicle</Text>
-        <Text style={styles.title}>Tela de Usuario</Text>
-        <Text style={styles.subtitle}>
-          Antes de entrar na tela inicial, crie sua conta ou entre em uma conta existente.
-        </Text>
+    <ResponsiveBackground opacity={0.46}>
+      <View style={styles.page}>
+        <View style={styles.logoWrap}>
+          <Logo maxWidth="62%" maxHeight={150} />
+        </View>
+
+        <View style={styles.heroCard}>
+          <Text style={styles.eyebrow}>Tokusatsu Chronicle</Text>
+          <Text style={styles.title}>Tela de Usuario</Text>
+          <Text style={styles.subtitle}>
+            Antes de entrar na tela inicial, crie sua conta ou entre em uma conta existente.
+          </Text>
+        </View>
+
+        <View style={styles.formCard}>
+          <View style={styles.modeRow}>
+            <ModeButton active={mode === "login"} label="Entrar" onPress={() => setMode("login")} />
+            <ModeButton active={mode === "register"} label="Criar conta" onPress={() => setMode("register")} />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Usuario</Text>
+            <TextInput
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Nome do usuario"
+              placeholderTextColor="#7f8b97"
+              autoCapitalize="none"
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Senha</Text>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Senha"
+              placeholderTextColor="#7f8b97"
+              secureTextEntry
+              style={styles.input}
+            />
+          </View>
+
+          <Pressable style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitButtonText}>{mode === "register" ? "Criar e entrar" : "Entrar na conta"}</Text>
+          </Pressable>
+
+          <View style={styles.feedbackCard}>
+            <Text style={styles.feedbackText}>{feedback}</Text>
+          </View>
+        </View>
       </View>
-
-      <View style={styles.formCard}>
-        <View style={styles.modeRow}>
-          <ModeButton active={mode === "login"} label="Entrar" onPress={() => setMode("login")} />
-          <ModeButton active={mode === "register"} label="Criar conta" onPress={() => setMode("register")} />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Usuario</Text>
-          <TextInput
-            value={username}
-            onChangeText={setUsername}
-            placeholder="Nome do usuario"
-            placeholderTextColor="#7f8b97"
-            autoCapitalize="none"
-            style={styles.input}
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Senha</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Senha"
-            placeholderTextColor="#7f8b97"
-            secureTextEntry
-            style={styles.input}
-          />
-        </View>
-
-        <Pressable style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>{mode === "register" ? "Criar e entrar" : "Entrar na conta"}</Text>
-        </Pressable>
-
-        <View style={styles.feedbackCard}>
-          <Text style={styles.feedbackText}>{feedback}</Text>
-        </View>
-      </View>
-    </View>
+    </ResponsiveBackground>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#040811",
     paddingHorizontal: 20,
     paddingVertical: 32,
     justifyContent: "center",
     gap: 18
+  },
+  logoWrap: {
+    alignItems: "center",
+    justifyContent: "center"
   },
   heroCard: {
     borderRadius: 28,

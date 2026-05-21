@@ -1,31 +1,69 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ScreenShell } from "../Components/ScreenShell";
 import { useAppSettings } from "../Context/AppSettingsContext";
 
-const VOLUME_OPTIONS = [0, 25, 50, 75, 100];
+function clamp(value) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
 
-function VolumeRow({ label, helper, value, onChange }) {
+function VolumeSlider({ label, helper, value, onChange }) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const trackLeftRef = useRef(0);
+  const percent = clamp(value);
+
+  const updateFromLocation = (locationX) => {
+    if (!trackWidth) {
+      return;
+    }
+
+    onChange(clamp((locationX / trackWidth) * 100));
+  };
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => {
+      updateFromLocation(event.nativeEvent.locationX);
+    },
+    onPanResponderMove: (event) => {
+      const pageX = event.nativeEvent.pageX;
+      updateFromLocation(pageX - trackLeftRef.current);
+    }
+  }), [trackWidth]);
+
   return (
     <View style={styles.settingBlock}>
-      <View style={styles.settingCopy}>
-        <Text style={styles.rowTitle}>{label}</Text>
-        <Text style={styles.rowSubtitle}>{helper}</Text>
+      <View style={styles.settingTopRow}>
+        <View style={styles.settingCopy}>
+          <Text style={styles.rowTitle}>{label}</Text>
+          <Text style={styles.rowSubtitle}>{helper}</Text>
+        </View>
+
+        <View style={styles.valueBadge}>
+          <Text style={styles.valueBadgeText}>{percent}%</Text>
+        </View>
       </View>
 
-      <View style={styles.volumeRow}>
-        {VOLUME_OPTIONS.map((option) => {
-          const active = option === value;
-
-          return (
-            <Pressable
-              key={option}
-              style={[styles.volumeOption, active && styles.volumeOptionActive]}
-              onPress={() => onChange(option)}
-            >
-              <Text style={[styles.volumeOptionText, active && styles.volumeOptionTextActive]}>{option}%</Text>
-            </Pressable>
-          );
-        })}
+      <View
+        style={styles.sliderTouchArea}
+        onLayout={(event) => {
+          setTrackWidth(event.nativeEvent.layout.width);
+          event.currentTarget?.measure?.((x, y, width, height, pageX) => {
+            trackLeftRef.current = pageX;
+          });
+        }}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.sliderTrack}>
+          <View style={[styles.sliderFill, { width: `${percent}%` }]} />
+          <View style={[styles.sliderThumb, { left: `${percent}%` }]} />
+        </View>
+        <View style={styles.sliderScale}>
+          <Text style={styles.sliderScaleText}>0</Text>
+          <Text style={styles.sliderScaleText}>50</Text>
+          <Text style={styles.sliderScaleText}>100</Text>
+        </View>
       </View>
     </View>
   );
@@ -55,49 +93,68 @@ export function SettingsView() {
     effectsVolume,
     setEffectsVolume,
     tipsEnabled,
-    setTipsEnabled
+    setTipsEnabled,
+    menuMusicEnabled,
+    setMenuMusicEnabled
   } = useAppSettings();
 
   return (
-    <ScreenShell title="Configuração" subtitle="Preferências do jogo" showBackButton>
+    <ScreenShell title="Configuracao" subtitle="Preferencias do jogo" showBackButton>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.panel}>
-          <VolumeRow
-            label="Música"
-            helper="Controle o volume da trilha da partida."
+          <VolumeSlider
+            label="Musica"
+            helper="Volume da musica dos menus. Ela pausa automaticamente ao entrar em uma partida."
             value={musicVolume}
             onChange={setMusicVolume}
           />
 
           <View style={styles.divider} />
 
-          <VolumeRow
+          <VolumeSlider
             label="Efeitos"
-            helper="Controle o volume de cliques e ações da mesa."
+            helper="Volume de cliques, impactos e acoes da mesa."
             value={effectsVolume}
             onChange={setEffectsVolume}
           />
 
           <View style={styles.divider} />
 
-          <ToggleRow label="Dicas de jogabilidade" value={tipsEnabled} onToggle={() => setTipsEnabled((current) => !current)} />
+          <ToggleRow
+            label="Musica dos menus"
+            value={menuMusicEnabled}
+            onToggle={() => setMenuMusicEnabled((current) => !current)}
+          />
+
+          <View style={styles.divider} />
+
+          <ToggleRow
+            label="Dicas de jogabilidade"
+            value={tipsEnabled}
+            onToggle={() => setTipsEnabled((current) => !current)}
+          />
         </View>
 
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Resumo rapido</Text>
           <Text style={styles.infoText}>
-            Os valores escolhidos ficam ativos nesta sessao e ja podem ser lidos por outras telas do app.
+            As preferencias ficam salvas no banco local e sao aplicadas durante a navegacao.
           </Text>
 
           <View style={styles.summaryRow}>
             <View style={styles.summaryPill}>
-              <Text style={styles.summaryLabel}>Música</Text>
+              <Text style={styles.summaryLabel}>Musica</Text>
               <Text style={styles.summaryValue}>{musicVolume}%</Text>
             </View>
 
             <View style={styles.summaryPill}>
               <Text style={styles.summaryLabel}>Efeitos</Text>
               <Text style={styles.summaryValue}>{effectsVolume}%</Text>
+            </View>
+
+            <View style={styles.summaryPill}>
+              <Text style={styles.summaryLabel}>Menu</Text>
+              <Text style={styles.summaryValue}>{menuMusicEnabled ? "On" : "Off"}</Text>
             </View>
 
             <View style={styles.summaryPill}>
@@ -126,6 +183,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 18
   },
+  settingTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
   settingCopy: {
     flex: 1
   },
@@ -146,32 +208,60 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 18
   },
-  volumeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 16
-  },
-  volumeOption: {
-    minWidth: 58,
-    borderRadius: 999,
+  valueBadge: {
+    minWidth: 64,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.18)",
-    paddingVertical: 10,
+    borderColor: "rgba(246, 217, 79, 0.55)",
+    backgroundColor: "rgba(246, 217, 79, 0.12)",
     paddingHorizontal: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    paddingVertical: 8,
     alignItems: "center"
   },
-  volumeOptionActive: {
-    backgroundColor: "#f6d94f",
-    borderColor: "#f6d94f"
+  valueBadgeText: {
+    color: "#fff4b0",
+    fontWeight: "900"
   },
-  volumeOptionText: {
-    color: "#dbe7f2",
+  sliderTouchArea: {
+    marginTop: 18,
+    paddingVertical: 14
+  },
+  sliderTrack: {
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.16)",
+    overflow: "visible"
+  },
+  sliderFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#f6d94f"
+  },
+  sliderThumb: {
+    position: "absolute",
+    top: -9,
+    width: 30,
+    height: 30,
+    marginLeft: -15,
+    borderRadius: 15,
+    borderWidth: 3,
+    borderColor: "#071018",
+    backgroundColor: "#fff4b0",
+    shadowColor: "#f6d94f",
+    shadowOpacity: 0.5,
+    shadowRadius: 12
+  },
+  sliderScale: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12
+  },
+  sliderScaleText: {
+    color: "#9fb0c1",
+    fontSize: 11,
     fontWeight: "700"
-  },
-  volumeOptionTextActive: {
-    color: "#071018"
   },
   divider: {
     height: 1,

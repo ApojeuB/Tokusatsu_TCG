@@ -60,8 +60,8 @@ export function DeckLibraryView() {
   const { decks, createDeck, deleteDeck, hydrated, openDeck, renameDeck } = useDeckBuilder();
   const [deckName, setDeckName] = useState("");
 
-  const handleCreateDeck = () => {
-    const deckId = createDeck(deckName);
+  const handleCreateDeck = async () => {
+    const deckId = await createDeck(deckName);
 
     if (!deckId) {
       return;
@@ -71,8 +71,8 @@ export function DeckLibraryView() {
     router.push(`/deckbuilder-editor/${deckId}`);
   };
 
-  const handleOpenDeck = (deckId) => {
-    if (openDeck(deckId)) {
+  const handleOpenDeck = async (deckId) => {
+    if (await openDeck(deckId)) {
       router.push(`/deckbuilder-editor/${deckId}`);
     }
   };

@@ -1,48 +1,27 @@
-import { useWindowDimensions, Image, StyleSheet, View } from "react-native";
 import { useMemo } from "react";
+import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 
-const logoImage = require("../../assets/home-hero.png");
+const logoImage = require("../../assets/Logo.png");
 
-/**
- * Componente Logo
- * 
- * Exibe a logo do Tokusatsu Chronicle centralizada e responsiva.
- * O tamanho da logo se adapta ao tamanho da tela.
- * 
- * @param {Object} props
- * @param {number} props.maxWidth - Largura máxima da logo (padrão: 80% da tela)
- * @param {number} props.maxHeight - Altura máxima da logo (padrão: 200px)
- */
 export function Logo({ maxWidth = "80%", maxHeight = 200 }) {
-  const { width, height } = useWindowDimensions();
-  
-  // Calcula o tamanho responsivo da logo
+  const { width } = useWindowDimensions();
+
   const logoSize = useMemo(() => {
-    // Converte porcentagem para pixels se necessário
-    const maxW = typeof maxWidth === "string" 
-      ? (parseInt(maxWidth) / 100) * width 
+    const maxW = typeof maxWidth === "string"
+      ? (parseInt(maxWidth, 10) / 100) * width
       : maxWidth;
-    
-    // Usa proporção 16:9 do home-hero (1672 x 941)
-    const aspectRatio = 1672 / 941;
-    
-    // Determina o tamanho final
     const finalWidth = Math.min(maxW, width * 0.95);
-    const finalHeight = Math.min(maxHeight, finalWidth / aspectRatio);
-    
+    const finalHeight = Math.min(maxHeight, finalWidth);
+
     return {
       width: finalWidth,
       height: finalHeight
     };
-  }, [width, height, maxWidth, maxHeight]);
+  }, [width, maxWidth, maxHeight]);
 
   return (
     <View style={styles.container}>
-      <Image
-        source={logoImage}
-        style={[styles.logo, logoSize]}
-        resizeMode="contain"
-      />
+      <Image source={logoImage} style={[styles.logo, logoSize]} resizeMode="contain" />
     </View>
   );
 }
@@ -54,6 +33,6 @@ const styles = StyleSheet.create({
     width: "100%"
   },
   logo: {
-    // Estilos base, dimensões são aplicadas dinamicamente
+    alignSelf: "center"
   }
 });

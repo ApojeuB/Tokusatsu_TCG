@@ -1,63 +1,17 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { initDatabase } from "../DataBase";
 import { UserEntity } from "../Entities/UserEntity";
+import { importLegacyPersistence } from "../Repositories/LegacyStorageImporter";
+import { UserRepository } from "../Repositories/UserRepository";
 
-const STORAGE_KEY = "tokusatsu-chronicle.user-session";
 const UserContext = createContext(null);
-const DEFAULT_ADMIN_USER = new UserEntity({
-  id: "seed-admin-user",
-  username: "adm",
-  password: "adm123",
-  createdAt: "2026-04-29T00:00:00.000Z",
-  updatedAt: "2026-04-29T00:00:00.000Z"
-});
 
 function normalizeUsername(username) {
   return typeof username === "string" ? username.trim().toLowerCase() : "";
 }
 
-function sanitizeUser(user) {
-  if (!user || typeof user.username !== "string" || typeof user.password !== "string") {
-    return null;
-  }
-
-  const trimmedUsername = user.username.trim();
-
-  if (!trimmedUsername || !user.password) {
-    return null;
-  }
-
-  return new UserEntity({
-    id: user.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    username: trimmedUsername,
-    password: user.password,
-    createdAt: user.createdAt || new Date().toISOString(),
-    updatedAt: user.updatedAt || new Date().toISOString()
-  });
-}
-
-function ensureAdminUser(users) {
-  const normalizedUsers = users.map(sanitizeUser).filter(Boolean).map((user) => {
-    if (normalizeUsername(user.username) !== "adm") {
-      return user;
-    }
-
-    return new UserEntity({
-      id: DEFAULT_ADMIN_USER.id,
-      username: DEFAULT_ADMIN_USER.username,
-      password: DEFAULT_ADMIN_USER.password,
-      createdAt: user.createdAt ?? DEFAULT_ADMIN_USER.createdAt,
-      updatedAt: DEFAULT_ADMIN_USER.updatedAt
-    });
-  });
-
-  const hasAdmin = normalizedUsers.some((user) => normalizeUsername(user.username) === "adm");
-
-  if (hasAdmin) {
-    return normalizedUsers;
-  }
-
-  return [...normalizedUsers, DEFAULT_ADMIN_USER];
+function createUserId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function UserProvider({ children }) {
@@ -65,55 +19,53 @@ export function UserProvider({ children }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [hydrated, setHydrated] = useState(false);
 
+  const reloadUsers = async () => {
+    const nextUsers = await UserRepository.getUsers();
+    const nextCurrentUserId = await UserRepository.getCurrentUserId();
+    const validCurrentUserId = nextUsers.some((user) => user.id === nextCurrentUserId)
+      ? nextCurrentUserId
+      : null;
+
+    setUsers(nextUsers);
+    setCurrentUserId(validCurrentUserId);
+    return { users: nextUsers, currentUserId: validCurrentUserId };
+  };
+
   useEffect(() => {
+    let cancelled = false;
+
     async function hydrateSession() {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        await initDatabase();
+        await importLegacyPersistence();
 
-        if (!raw) {
-          setUsers([DEFAULT_ADMIN_USER]);
-          setCurrentUserId(null);
-          return;
+        if (!cancelled) {
+          await reloadUsers();
         }
-
-        const parsed = JSON.parse(raw);
-        const nextUsers = ensureAdminUser(Array.isArray(parsed?.users) ? parsed.users : []);
-        const nextCurrentUserId = nextUsers.some((user) => user.id === parsed?.currentUserId)
-          ? parsed.currentUserId
-          : null;
-
-        setUsers(nextUsers);
-        setCurrentUserId(nextCurrentUserId);
       } catch {
-        setUsers([DEFAULT_ADMIN_USER]);
-        setCurrentUserId(null);
+        if (!cancelled) {
+          setUsers([]);
+          setCurrentUserId(null);
+        }
       } finally {
-        setHydrated(true);
+        if (!cancelled) {
+          setHydrated(true);
+        }
       }
     }
 
     hydrateSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    if (!hydrated) {
-      return;
-    }
-
-    AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          users: ensureAdminUser(users),
-          currentUserId
-        })
-    ).catch(() => {});
-  }, [hydrated, users, currentUserId]);
 
   const currentUser = useMemo(() => {
     return users.find((user) => user.id === currentUserId) ?? null;
   }, [currentUserId, users]);
 
-  const registerUser = (username, password) => {
+  const registerUser = async (username, password) => {
     const trimmedUsername = username?.trim();
 
     if (!trimmedUsername || !password) {
@@ -121,7 +73,8 @@ export function UserProvider({ children }) {
     }
 
     const normalizedUsername = normalizeUsername(trimmedUsername);
-    const alreadyExists = users.some((user) => normalizeUsername(user.username) === normalizedUsername);
+    const alreadyExists = users.some((user) => normalizeUsername(user.username) === normalizedUsername)
+      || Boolean(await UserRepository.findByUsername(trimmedUsername));
 
     if (alreadyExists) {
       return { ok: false, message: "Este usuario ja existe." };
@@ -129,51 +82,56 @@ export function UserProvider({ children }) {
 
     const timestamp = new Date().toISOString();
     const nextUser = new UserEntity({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: createUserId(),
       username: trimmedUsername,
       password,
       createdAt: timestamp,
       updatedAt: timestamp
     });
 
-    setUsers((current) => [...current, nextUser]);
+    await UserRepository.createUser(nextUser);
+    await UserRepository.setCurrentUserId(nextUser.id);
+    setUsers((current) => [...current, nextUser].sort((left, right) => left.username.localeCompare(right.username)));
     setCurrentUserId(nextUser.id);
 
     return { ok: true, user: nextUser };
   };
 
-  const loginUser = (username, password) => {
+  const loginUser = async (username, password) => {
     const normalizedUsername = normalizeUsername(username);
     const matchedUser = users.find(
-        (user) => normalizeUsername(user.username) === normalizedUsername && user.password === password
-    );
+      (user) => normalizeUsername(user.username) === normalizedUsername && user.password === password
+    ) ?? await UserRepository.findByUsername(username);
 
-    if (!matchedUser) {
+    if (!matchedUser || matchedUser.password !== password) {
       return { ok: false, message: "Usuario ou senha invalidos." };
     }
 
+    await UserRepository.setCurrentUserId(matchedUser.id);
     setCurrentUserId(matchedUser.id);
     return { ok: true, user: matchedUser };
   };
 
-  const logoutUser = () => {
+  const logoutUser = async () => {
+    await UserRepository.setCurrentUserId(null);
     setCurrentUserId(null);
   };
 
   return (
-      <UserContext.Provider
-          value={{
-            hydrated,
-            users,
-            currentUser,
-            isAuthenticated: Boolean(currentUser),
-            registerUser,
-            loginUser,
-            logoutUser
-          }}
-      >
-        {children}
-      </UserContext.Provider>
+    <UserContext.Provider
+      value={{
+        hydrated,
+        users,
+        currentUser,
+        isAuthenticated: Boolean(currentUser),
+        registerUser,
+        loginUser,
+        logoutUser,
+        reloadUsers
+      }}
+    >
+      {children}
+    </UserContext.Provider>
   );
 }
 

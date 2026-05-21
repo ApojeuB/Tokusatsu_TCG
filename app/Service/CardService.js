@@ -7,18 +7,30 @@ const cards = [
     id: "tc-001",
     name: "Henshin!",
     series: "Tokusatsu Chronicle",
-    type: "Action",
-    subtype: "Transform",
+    cardType: "Action",
+    subTypes: ["Transform", "Support"],
     cost: 1,
-    power: 0,
+    pitchValue: 1,
+    color: "red",
+    attack: 0,
     defense: 0,
     rarity: "Real Card",
-    image: henshinCard,
-    effect: "Choose 1 USER card you control. You may place 1 RIDER card from your hand on top of it.",
+    artwork: henshinCard,
+    keywords: ["Go Again"],
+    effects: [
+      {
+        id: "tc-001-transform",
+        type: "activated",
+        duration: "instant",
+        targets: ["user-card"]
+      }
+    ],
+    goAgain: true,
+    text: "Choose 1 USER card you control. You may place 1 RIDER card from your hand on top of it.",
     rules: [
-      "Escolha 1 carta USER que você controla.",
-      "Você pode colocar 1 carta RIDER da sua mão sobre ela.",
-      "Enquanto estiverem empilhadas, trate-as como uma única unidade."
+      "Escolha 1 carta USER que voce controla.",
+      "Voce pode colocar 1 carta RIDER da sua mao sobre ela.",
+      "Enquanto estiverem empilhadas, trate-as como uma unica unidade."
     ],
     flavorText: "Hen...shin!"
   })
@@ -30,5 +42,8 @@ export const CardService = {
   },
   getStarterDeck() {
     return [cards[0]];
+  },
+  getKeywords() {
+    return cards.flatMap((card) => card.keywords ?? []);
   }
 };

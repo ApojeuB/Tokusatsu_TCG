@@ -1,37 +1,24 @@
-import { useWindowDimensions, ImageBackground, StyleSheet, View } from "react-native";
 import { useMemo } from "react";
+import { ImageBackground, StyleSheet, View, useWindowDimensions } from "react-native";
 
-const cardBack = require("../../assets/card-back.png");
-const homeHero = require("../../assets/home-hero.png");
+const androidBackground = require("../../assets/background_Android.png");
+const desktopBackground = require("../../assets/background_Pc.png");
 
-/**
- * Componente ResponsiveBackground
- * 
- * Seleciona automaticamente o background correto baseado na plataforma/dimensões:
- * - Android/Mobile (largura < 600): card-back.png
- * - Web/Desktop (largura >= 600): home-hero.png
- * 
- * @param {Object} props
- * @param {React.ReactNode} props.children - Conteúdo dentro do background
- * @param {number} props.opacity - Opacidade da imagem (0-1)
- * @param {string} props.overlayColor - Cor do overlay
- */
-export function ResponsiveBackground({ children, opacity = 0.34, overlayColor = "rgba(1, 3, 9, 0.76)" }) {
+export function ResponsiveBackground({
+  children,
+  opacity = 0.34,
+  overlayColor = "rgba(1, 3, 9, 0.76)"
+}) {
   const { width } = useWindowDimensions();
-  
-  // Determina se é mobile ou desktop baseado na largura
   const isMobile = useMemo(() => width < 600, [width]);
-  
-  // Seleciona o background apropriado
-  const backgroundSource = useMemo(() => {
-    return isMobile ? cardBack : homeHero;
-  }, [isMobile]);
+  const backgroundSource = isMobile ? androidBackground : desktopBackground;
 
   return (
-    <ImageBackground 
-      source={backgroundSource} 
-      style={styles.background} 
+    <ImageBackground
+      source={backgroundSource}
+      style={styles.background}
       imageStyle={[styles.backgroundImage, { opacity }]}
+      resizeMode="cover"
     >
       <View style={[styles.overlay, { backgroundColor: overlayColor }]} />
       {children}

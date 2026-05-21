@@ -12,8 +12,8 @@ export function HomeView() {
   // Determina se é mobile ou desktop
   const isMobile = width < 600;
 
-  const handleLogout = () => {
-    logoutUser();
+  const handleLogout = async () => {
+    await logoutUser();
     router.replace("/");
   };
 

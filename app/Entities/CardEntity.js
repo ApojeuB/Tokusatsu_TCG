@@ -19,7 +19,10 @@ export class CardEntity {
     text,
     effect,
     keywords = [],
+    tags = [],
+    borderTag = null,
     effects = [],
+    triggers = [],
     comboCondition = null,
     fusionCondition = null,
     goAgain = false,
@@ -51,7 +54,10 @@ export class CardEntity {
     this.text = text ?? effect ?? "";
     this.effect = this.text;
     this.keywords = keywords;
+    this.tags = tags;
+    this.borderTag = borderTag;
     this.effects = effects;
+    this.triggers = triggers;
     this.comboCondition = comboCondition;
     this.fusionCondition = fusionCondition;
     this.goAgain = goAgain;
@@ -69,6 +75,20 @@ export class CardEntity {
     return this.keywords.some((keyword) => {
       const name = typeof keyword === "string" ? keyword : keyword?.name;
       return name?.toLowerCase() === keywordName.toLowerCase();
+    });
+  }
+
+  hasTag(tagName) {
+    const normalizedTag = tagName.toLowerCase();
+    const tags = [
+      ...(this.tags ?? []),
+      ...(this.keywords ?? []),
+      this.borderTag
+    ].filter(Boolean);
+
+    return tags.some((tag) => {
+      const name = typeof tag === "string" ? tag : tag?.name;
+      return name?.toLowerCase() === normalizedTag;
     });
   }
 }

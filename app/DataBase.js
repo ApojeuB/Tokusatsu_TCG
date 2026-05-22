@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 
 const DATABASE_NAME = "tokusatsu_chronicle.db";
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 let databasePromise = null;
 let initializedPromise = null;
@@ -90,6 +90,8 @@ async function createSchema(db) {
       defense INTEGER DEFAULT 0,
       health INTEGER,
       text TEXT,
+      tags TEXT,
+      borderTag TEXT,
       effects TEXT,
       comboCondition TEXT,
       fusionCondition TEXT,
@@ -350,9 +352,9 @@ async function seedDefaults(db) {
   await db.runAsync(
     `INSERT OR IGNORE INTO cards (
       id, name, series, cardType, subTypes, cost, pitchValue, color,
-      attack, defense, text, effects, goAgain, dominate, intimidate,
+      attack, defense, text, tags, borderTag, effects, goAgain, dominate, intimidate,
       rarity, legality, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       "tc-001",
       "Henshin!",
@@ -365,6 +367,8 @@ async function seedDefaults(db) {
       0,
       0,
       "Choose 1 USER card you control. You may place 1 RIDER card from your hand on top of it.",
+      toJson(["Go Again"], []),
+      "Go Again",
       toJson([{ id: "tc-001-transform", type: "activated", duration: "instant", targets: ["user-card"] }], []),
       1,
       0,
@@ -379,8 +383,12 @@ async function seedDefaults(db) {
   const keywords = [
     ["go-again", "Go Again", "After this action resolves, the player regains an action point.", "resolution", 0, "A resolved action with Go Again restores momentum for another action."],
     ["dominate", "Dominate", "The defender is limited while blocking this attack.", "attack", 0, "A dominated attack restricts defensive options during the block step."],
+    ["overpower", "Overpower", "The defender cannot play defense reactions from hand against this attack.", "reaction", 0, "Defense Reactions from hand are not legal against this attack."],
+    ["on-hit", "On-Hit", "Mandatory effects that trigger when the attack deals damage to the opposing hero.", "hit", 1, "If this attack hits a hero, resolve its on-hit effects."],
     ["fusion", "Fusion", "An additional condition unlocks a stronger effect.", "play", 0, "When the fusion condition is met, apply the fused effect text."],
     ["combo", "Combo", "Checks previous combat chain activity.", "play", 0, "If the combo condition matches attack history, apply the combo bonus."],
+    ["reload", "Reload", "Draw cards until reaching the player's intellect.", "resolution", 0, "When this resolves, draw until hand size equals intellect."],
+    ["temper", "Temper", "Equipment loses defensive durability after defending.", "defense", 0, "After this equipment defends, reduce durability; destroy it at zero."],
     ["blood-debt", "Blood Debt", "A lingering drawback checked at the end of turn.", "end", 1, "At end phase, unresolved Blood Debt effects may deal damage to their owner."],
     ["intimidate", "Intimidate", "Pressures the defender before blocks are declared.", "attack", 1, "When this triggers, temporarily remove a random eligible defending card."]
   ];
@@ -436,6 +444,22 @@ async function migrate(db) {
         updatedAt TEXT NOT NULL
       );
     `);
+    await db.execAsync("PRAGMA user_version = 2");
+    await upsertMeta(db, "schema_version", "2");
+  }
+
+  if (currentVersion < 3) {
+    const columns = await db.getAllAsync("PRAGMA table_info(cards)");
+    const columnNames = columns.map((column) => column.name);
+
+    if (!columnNames.includes("tags")) {
+      await db.execAsync("ALTER TABLE cards ADD COLUMN tags TEXT");
+    }
+
+    if (!columnNames.includes("borderTag")) {
+      await db.execAsync("ALTER TABLE cards ADD COLUMN borderTag TEXT");
+    }
+
     await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
     await upsertMeta(db, "schema_version", String(SCHEMA_VERSION));
   }

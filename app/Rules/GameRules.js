@@ -40,6 +40,10 @@ export const GAME_EVENTS = {
   onFieldChange: "ON_FIELD_CHANGE",
   onCardPlayed: "ON_CARD_PLAYED",
   onStackResolved: "ON_STACK_RESOLVED",
+  onChainLinkResolved: "ON_CHAIN_LINK_RESOLVED",
+  onHit: "ON_HIT",
+  onDefenseDeclared: "ON_DEFENSE_DECLARED",
+  onEquipmentDefended: "ON_EQUIPMENT_DEFENDED",
   onTurnStart: "ON_TURN_START",
   onTurnEnd: "ON_TURN_END"
 };
@@ -109,5 +113,37 @@ export const DEFAULT_KEYWORDS = [
     stackable: true,
     description: "Pressures the defender before blocks are declared.",
     ruleText: "When this triggers, temporarily remove a random eligible defending card."
+  },
+  {
+    id: "overpower",
+    name: "Overpower",
+    timing: "attack",
+    stackable: false,
+    description: "The defender cannot play defense reactions from hand against this attack.",
+    ruleText: "While this attack is defended, defense reactions from hand are not legal."
+  },
+  {
+    id: "on-hit",
+    name: "On-Hit",
+    timing: "hit",
+    stackable: true,
+    description: "Mandatory effects that trigger when the attack deals damage to the opposing hero.",
+    ruleText: "If this attack hits a hero, resolve the card's on-hit effects."
+  },
+  {
+    id: "reload",
+    name: "Reload",
+    timing: "resolution",
+    stackable: false,
+    description: "Draw cards until reaching the player's intellect.",
+    ruleText: "When this resolves, the player draws until their hand size equals their intellect."
+  },
+  {
+    id: "temper",
+    name: "Temper",
+    timing: "defense",
+    stackable: false,
+    description: "Equipment loses defensive durability after defending instead of immediately going to graveyard.",
+    ruleText: "After this equipment defends, reduce its remaining defense durability; destroy it when it reaches zero."
   }
 ];

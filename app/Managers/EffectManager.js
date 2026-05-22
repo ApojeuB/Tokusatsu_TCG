@@ -5,13 +5,13 @@ export class EffectManager {
     });
   }
 
-  resolve(effect, matchState) {
+  resolve(effect, matchState, event = null) {
     if (!this.canResolve(effect, matchState)) {
       return false;
     }
 
     if (typeof effect.resolution === "function") {
-      effect.resolution(matchState, effect);
+      effect.resolution(matchState, effect, event);
     }
 
     return true;

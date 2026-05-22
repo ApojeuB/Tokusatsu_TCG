@@ -5,3 +5,4 @@ export * from "./DeckService";
 export * from "./MatchService";
 export * from "./RulesService";
 export * from "./SaveService";
+export * from "./TagService";

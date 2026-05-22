@@ -21,6 +21,8 @@ function mapCard(row) {
     defense: row.defense,
     health: row.health,
     text: row.text,
+    tags: fromJson(row.tags, []),
+    borderTag: row.borderTag,
     effects: fromJson(row.effects, []),
     comboCondition: row.comboCondition,
     fusionCondition: row.fusionCondition,

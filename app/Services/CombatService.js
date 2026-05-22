@@ -22,15 +22,22 @@ export class CombatService {
     return { validation, link };
   }
 
-  static declareBlock(matchState, blockCard) {
+  static declareBlock(matchState, blockCard, options = {}) {
     const combatLink = matchState.combatChain.currentLink;
-    const validation = blockValidator.validate({ blockCard, combatLink });
+    const validation = blockValidator.validate({
+      blockCard,
+      combatLink,
+      sourceZone: options.sourceZone ?? blockCard?.sourceZone ?? "hand"
+    });
 
     if (!validation.ok) {
       return { validation, combatLink };
     }
 
-    combatManager.addDefense(combatLink, blockCard);
+    combatManager.addDefense(combatLink, {
+      ...blockCard,
+      sourceZone: options.sourceZone ?? blockCard?.sourceZone ?? "hand"
+    });
     return { validation, combatLink };
   }
 

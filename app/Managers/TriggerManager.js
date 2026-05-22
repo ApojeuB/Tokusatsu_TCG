@@ -19,4 +19,16 @@ export class TriggerManager {
         : true;
     });
   }
+
+  resolveTriggers(event, matchState, effectManager) {
+    const triggers = this.checkTriggers(event, matchState);
+
+    triggers.forEach((trigger) => {
+      if (trigger.effect && effectManager?.resolve) {
+        effectManager.resolve(trigger.effect, matchState, event);
+      }
+    });
+
+    return triggers;
+  }
 }

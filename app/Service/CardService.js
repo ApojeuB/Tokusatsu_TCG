@@ -17,6 +17,8 @@ const cards = [
     rarity: "Real Card",
     artwork: henshinCard,
     keywords: ["Go Again"],
+    tags: ["Go Again"],
+    borderTag: "Go Again",
     effects: [
       {
         id: "tc-001-transform",

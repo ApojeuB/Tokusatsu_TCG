@@ -26,6 +26,8 @@ export * from "./ResourcePoolEntity";
 export * from "./RulesEngineEntity";
 export * from "./StackEntity";
 export * from "./StackItemEntity";
+export * from "./TagBindingEntity";
+export * from "./TagEntity";
 export * from "./TokenEntity";
 export * from "./TriggerEntity";
 export * from "./TurnPhaseEntity";

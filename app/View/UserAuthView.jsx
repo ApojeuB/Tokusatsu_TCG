@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Logo } from "../Components/Logo";
 import { ResponsiveBackground } from "../Components/ResponsiveBackground";
 import { useUser } from "../Context/UserContext";
+import { ensureSound } from "../Components/MenuMusicPlayer";
 
 function ModeButton({ active, label, onPress }) {
   return (
@@ -30,7 +31,24 @@ export function UserAuthView() {
       return;
     }
 
+    try {
+      const sound = await ensureSound();
+
+      if (sound) {
+        await sound.playAsync();
+      }
+    } catch (error) {
+      console.log("Erro audio:", error);
+    }
+
     setFeedback(mode === "register" ? "Conta criada com sucesso." : "Login realizado com sucesso.");
+
+    globalThis.audioUnlocked = true;
+
+    const sound = await ensureSound();
+
+    await sound.playAsync();
+
     router.replace("/home");
   };
 

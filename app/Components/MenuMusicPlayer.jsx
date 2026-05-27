@@ -9,47 +9,45 @@ function isBattleRoute(pathname) {
   return pathname === "/play" || pathname?.startsWith("/play/");
 }
 
+
+const soundRef = {
+  current: null
+};
+
+export async function ensureSound(musicVolume = 75) {
+  if (soundRef.current) {
+    return soundRef.current;
+  }
+
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
+    staysActiveInBackground: false
+  });
+
+  const { sound } = await Audio.Sound.createAsync(
+    menuTheme,
+    {
+      isLooping: true,
+      shouldPlay: false,
+      volume: musicVolume / 100
+    }
+  );
+
+  soundRef.current = sound;
+
+  return sound;
+}
+
 export function MenuMusicPlayer() {
   const pathname = usePathname();
   const { hydrated, menuMusicEnabled, musicVolume } = useAppSettings();
-  const soundRef = useRef(null);
   const shouldPlay = hydrated && menuMusicEnabled && musicVolume > 0 && !isBattleRoute(pathname);
 
   useEffect(() => {
     let cancelled = false;
-
-    async function ensureSound() {
-      if (soundRef.current) {
-        return soundRef.current;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DUCK_OTHERS,
-        playThroughEarpieceAndroid: false,
-        staysActiveInBackground: false
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        menuTheme,
-        {
-          isLooping: true,
-          shouldPlay: false,
-          volume: musicVolume / 100
-        }
-      );
-
-      if (cancelled) {
-        await sound.unloadAsync();
-        return null;
-      }
-
-      soundRef.current = sound;
-      return sound;
-    }
 
     async function syncPlayback() {
       try {
@@ -61,13 +59,13 @@ export function MenuMusicPlayer() {
 
         await sound.setVolumeAsync(musicVolume / 100);
 
-        if (shouldPlay) {
-          await sound.playAsync();
+        if (shouldPlay && globalThis.audioUnlocked) {
+            await sound.playAsync();
         } else {
           await sound.pauseAsync();
         }
-      } catch {
-        // Autoplay pode ser bloqueado no web; mobile volta a tocar quando permitido.
+      } catch (error) {
+        console.log("Erro audio:", error);
       }
     }
 
